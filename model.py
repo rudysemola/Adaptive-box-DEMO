@@ -1,9 +1,11 @@
+import random
+
 
 class Model:
 
-    def __init__(self):
-        self.a = 0.0001
+    def __init__(self, a):
+        self.a = a
 
-    def predict(self, x, ts):
-        return self.a*ts*ts
+    def predict(self, x):
+        return random.uniform(-0.2, 0.2)
 

@@ -1,7 +1,11 @@
-import random
 import time
 
 
-def get_next(dt):
-    time.sleep(dt)
-    return random.uniform(-1, 1)
+class DataSource:
+
+    def __init__(self, a):
+        self.a = a
+
+    def get_next(self, dt, timestep):
+        time.sleep(dt)
+        return self.a*timestep*timestep

@@ -1,27 +1,38 @@
 import adats
 import model
 import detector
+import data
 
 if __name__ == "__main__":
 
     # csv files
     ts_csv = 'ts.csv'
     preds_csv = 'preds.csv'
-    p = 4 # timesteps into the future
+    
+    dt = 0.5 # time between consecutive points in the time series
+    p = 1 # timesteps into the future
+    t = 30 # MSE threshold for change detection
+    a = 0.004 # indicates how fast the change is detected
+    w_size_prediction = 2
+    w_size_detection = 2
 
-    model = model.Model()
+
+    model = model.Model(a=a)
     detector = detector.Detector(
-        w_size=2, # detection window size
-        p=p
+        w_size=w_size_detection, # detection window size
+        p=p,
+        t=t
     )
+    data_source = data.DataSource(a=a)
 
     # Setting up adaptive time series algorithm
     adats = adats.AdaTS(
         model=model,
         detector=detector,
-        dt=0.5, # time between consecutive points in the time series
+        data_source=data_source,
+        dt=dt,
         p=p,
-        w_size=2, # prediction window size
+        w_size=w_size_prediction,
         ts_csv=ts_csv,
         preds_csv=preds_csv
     )
