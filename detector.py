@@ -9,9 +9,6 @@ class Detector:
         self.t = t
         
     def detect_change(self, ts, preds, labeled):
-        #return False
-        print('Detecting')
-        #print(ts, preds)
 
         # Compute mse inside window
         true = np.array(ts[-self.w_size:])

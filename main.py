@@ -10,22 +10,21 @@ if __name__ == "__main__":
     preds_csv = 'preds.csv'
     
     dt = 0.5 # time between consecutive points in the time series
-    p = 1 # timesteps into the future
+    p = 1 # timesteps into the future (p=1 -> next step)
     t = 30 # MSE threshold for change detection
     a = 0.004 # indicates how fast the change is detected
-    w_size_prediction = 2
-    w_size_detection = 2
-
+    w_size_prediction = 2 # prediction window size
+    w_size_detection = 2 # detection window size
 
     model = model.Model(a=a)
     detector = detector.Detector(
-        w_size=w_size_detection, # detection window size
+        w_size=w_size_detection, 
         p=p,
         t=t
     )
     data_source = data.DataSource(a=a)
 
-    # Setting up adaptive time series algorithm
+    # Setting up the adaptive time series algorithm
     adats = adats.AdaTS(
         model=model,
         detector=detector,
