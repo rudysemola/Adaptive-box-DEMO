@@ -10,7 +10,7 @@ if __name__ == "__main__":
     preds_csv = 'preds.csv'
     
     dt = 0.5 # time between consecutive points in the time series
-    p = 1 # timesteps into the future (p=1 -> next step)
+    p = 5 # timesteps into the future (p=1 -> next step)
     t = 30 # MSE threshold for change detection
     a = 0.004 # indicates how fast the change is detected
     w_size_prediction = 2 # prediction window size

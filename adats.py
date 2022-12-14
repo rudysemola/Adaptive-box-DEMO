@@ -101,16 +101,19 @@ class AdaTS:
     
     def plot(self, ts, preds):
         
-        plt.figure(figsize=(12, 5))
+        plt.figure(figsize=(14, 5))
 
-        plt.plot(range(0, len(ts)), ts)
+        plt.plot(range(0, len(ts)), ts, label='Data')
         
         offset = self.w_size + self.p
-        plt.plot(range(offset, offset+len(preds)), preds)
+        plt.plot(range(offset, offset+len(preds)), preds, label='Predictions')
 
         plt.axvline(self.p+self.w_size, color='orange', linestyle='--')
         plt.axvline(self.w_size, linestyle='--', color='blue')
         plt.axvline(0, linestyle='--', color='blue')
-        plt.xticks(range(0, len(preds)))
+        plt.xticks(range(0, len(ts)+self.p))
+
+        plt.legend()
         
+        plt.savefig('./plot.png', transparent=True)
         plt.show()
