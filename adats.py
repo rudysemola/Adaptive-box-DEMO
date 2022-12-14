@@ -34,6 +34,7 @@ class AdaTS:
             ts_w = csv.writer(ts_file)
             preds_w = csv.writer(preds_file)
 
+            # TODO: tensors!
             ts = []
             preds = []
 
@@ -105,12 +106,13 @@ class AdaTS:
 
         plt.plot(range(0, len(ts)), ts, label='Data')
         
-        offset = self.w_size + self.p
+        offset = self.w_size + self.p - 1
         plt.plot(range(offset, offset+len(preds)), preds, label='Predictions')
 
-        plt.axvline(self.p+self.w_size, color='orange', linestyle='--')
-        plt.axvline(self.w_size, linestyle='--', color='blue')
         plt.axvline(0, linestyle='--', color='blue')
+        plt.axvline(self.w_size-1, linestyle='--', color='blue')
+        plt.axvline(self.p+self.w_size-1, color='orange', linestyle='--')
+        plt.axvline(self.p+self.w_size-1+self.detector.w_size-1, color='orange', linestyle='--')
         plt.xticks(range(0, len(ts)+self.p))
 
         plt.legend()

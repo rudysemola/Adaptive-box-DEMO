@@ -15,14 +15,15 @@ if __name__ == "__main__":
     a = 0.004 # indicates how fast the change is detected
     w_size_prediction = 2 # prediction window size
     w_size_detection = 2 # detection window size
+    start_pred = 0
 
-    model = model.Model(a=a)
+    model = model.DummyModel(start_pred=start_pred)
     detector = detector.Detector(
         w_size=w_size_detection, 
         p=p,
         t=t
     )
-    data_source = data.DataSource(a=a)
+    data_source = data.DummyData(a=a)
 
     # Setting up the adaptive time series algorithm
     adats = adats.AdaTS(
