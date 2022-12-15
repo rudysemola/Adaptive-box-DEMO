@@ -1,119 +1,78 @@
-import csv
-import data
-import time
 from matplotlib import pyplot as plt
+import torch
 
 
 class AdaTS:
-
     
-    def __init__(self, model, detector, data_source,
-                 dt, p, w_size, ts_csv, preds_csv):
+    def __init__(self, model, dataset, dataloader, 
+                 detector, p):
         
         self.model = model
+        self.dataset = dataset
+        self.dataloader = dataloader
         self.detector = detector
-        self.data_source = data_source
-        self.dt = dt
         self.p = p
-        self.w_size = w_size
-        self.ts_csv = ts_csv
-        self.preds_csv = preds_csv
-
-        self.count = 0
-
-
-    def start_adaptation(self):
-
-        #w_size = self.model.window_size()
-        # initialize window tensor: window = ...
-
-        # Open csv files, one for time series and one for predictions
-        with open(self.ts_csv, 'a', encoding='UTF8', newline='') as ts_file, \
-            open(self.preds_csv, 'a', encoding='UTF8', newline='') as preds_file:
-
-            ts_w = csv.writer(ts_file)
-            preds_w = csv.writer(preds_file)
-
-            # TODO: tensors!
-            ts = []
-            preds = []
-
-            # csv headers
-            ts_w.writerow(['Timestep', 'Value'])
-            preds_w.writerow(['Timestep', 'Value'])
-
-            # wait for first w_size-1 samples before predicting
-            while self.count < self.w_size-1:
-                # get next data sample
-                # TODO: n-dim vector
-                x_i = self.data_source.get_next(self.dt, self.count-self.w_size+1)
-                print("Data {}: {}".format(self.count, x_i))
-
-                # write data to db/csv
-                ts_w.writerow([self.count, x_i])
-                ts.append(x_i)
-                
-                # TODO: fill (w_size x n) window tensor
-
-                self.count += 1
-            
-            print()
-            print("Starting predicting...")
-            print()
-
-            # begin inference and adaptation
-            while True:
-                # wait for the next x_i
-                x_i = self.data_source.get_next(self.dt, self.count-self.w_size+1)
-                print("Data {}: {}".format(self.count, x_i))
-                
-                # TODO: adapt model -> gather x window, forward (again!) and backprop/adapt
-                # TODO: overwrite window tensor
-
-                # predict x_(i+p) using x_i, ..., x_(i-w_size+1)
-                prediction = self.model.predict(x_i)
-                print("Prediction: ", prediction)
-                
-                # write data to db/csv (writing to disk takes around 1e-5 secs)
-                ts_w.writerow([self.count, x_i])
-                ts.append(x_i)
-                
-                # write prediction to db/csv
-                preds_w.writerow([self.count+self.p, prediction])
-                preds.append(prediction)
-
-                self.count += 1
-
-                # num. of predictions with corresponding true values
-                labeled = self.count-self.w_size-self.p+1 
-
-                # detection should start after the observation of the true value 
-                # corresponding to the first prediction
-                if labeled > 0:
-                    # wait for detection window to be filled    
-                    if labeled % self.detector.w_size == 0:
-                        if self.detector.detect_change(ts, preds, labeled):
-                            # TODO: handle anomaly
-                            print("Anomaly!")
-                            self.plot(ts, preds)
-
-                print()
 
     
-    def plot(self, ts, preds):
+    def start_adaptation(self):
+
+        stream = iter(self.dataloader)
+
+        series = torch.tensor([])
+        preds = torch.tensor([])
+
+        # begin inference and adaptation
+        while True:
+
+            # wait for the next (1, n) tensor x
+            x = next(stream)
+            print("Data {}: {}".format(self.dataset.count, x))
+
+            # Cat new data
+            series = torch.cat((series, x))
+            
+            # num. of predictions with corresponding true values
+            labeled = self.dataset.count - self.p
+            if labeled > 0:
+                # compute loss(x, x_hat) and back prop (x_hat is a past prediction)
+                loss = torch.square(x - preds[-self.p])
+                print("Point loss: ", loss)
+                # TODO: adapt model
+                """ loss = mse(x, preds[-self.p+1])
+                loss.backward()
+                optimizer.step() """
+
+            # predict x_(i+p) using x_i, ..., x_(i-w_size+1)
+            x_hat = self.model.forward(series)
+            print("Prediction: ", x_hat)
+
+            # Cat new pred
+            preds = torch.cat((preds, x_hat.view(1, -1)))
+
+            # detection should start after the observation of the true value 
+            # corresponding to the first prediction
+            if labeled > 0:
+                # wait for detection window to be filled    
+                if labeled % self.detector.w_size == 0:
+                    if self.detector.detect_change(series, preds, labeled):
+                        # TODO: handle anomaly
+                        print("Anomaly!")
+                        self.plot(series, preds)
+
+            print()
+
+    
+    def plot(self, series, preds):
         
         plt.figure(figsize=(14, 5))
 
-        plt.plot(range(0, len(ts)), ts, label='Data')
+        plt.plot(range(0, len(series)), series, label='Data')
         
-        offset = self.w_size + self.p - 1
+        offset = self.p
         plt.plot(range(offset, offset+len(preds)), preds, label='Predictions')
-
-        plt.axvline(0, linestyle='--', color='blue')
-        plt.axvline(self.w_size-1, linestyle='--', color='blue')
-        plt.axvline(self.p+self.w_size-1, color='orange', linestyle='--')
-        plt.axvline(self.p+self.w_size-1+self.detector.w_size-1, color='orange', linestyle='--')
-        plt.xticks(range(0, len(ts)+self.p))
+        plt.axvline(self.p, color='orange', linestyle='--')
+        plt.axvline(self.p+self.detector.w_size-1, color='orange', linestyle='--')
+        plt.xticks(range(0, len(series)+self.p))
 
         plt.legend()
         

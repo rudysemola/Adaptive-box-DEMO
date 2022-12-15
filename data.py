@@ -1,19 +1,22 @@
 import time
+import torch
+from torch.utils.data import IterableDataset
+import math
 
 
-class DataSource:
+class SensorDataStream(IterableDataset):
 
-    def get_next(self, dt, timestep):
-        pass
-
-
-class DummyData(DataSource):
-
-    def __init__(self, a):
+    def __init__(self, a, dt):
         self.a = a
+        self.dt = dt
 
-    def get_next(self, dt, timestep):
+    def __iter__(self):
+        self.count = 0
+        return self
 
-        # TODO: separate process
-        time.sleep(dt)
-        return self.a*timestep*timestep
+    def __next__(self):
+        time.sleep(self.dt)
+        self.count += 1
+        #return torch.tensor([math.sin(self.count),math.cos(self.count)]) 
+        return torch.tensor([self.a*self.count*self.count, self.a/2*self.count*self.count])
+

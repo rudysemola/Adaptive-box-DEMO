@@ -1,4 +1,4 @@
-import numpy as np
+import torch
 
 
 class Detector:
@@ -8,13 +8,13 @@ class Detector:
         self.p = p
         self.t = t
         
-    def detect_change(self, ts, preds, labeled):
+    def detect_change(self, series, preds, labeled):
 
         # Compute mse inside window
-        true = np.array(ts[-self.w_size:])
-        pred = np.array(preds[labeled-self.w_size:labeled])
+        true = series[-self.w_size:]
+        pred = preds[labeled-self.w_size:labeled]
 
-        mse = np.mean(np.square(true - pred))
+        mse = torch.mean(torch.square(true - pred))
 
         print("Mse: ", mse)
 

@@ -1,16 +1,19 @@
 import random
+import torch
 
 
-class Model:
+class Model(torch.nn.Module):
 
-    def predict(self, x):
+    def forward(self, x):
         pass
 
 
 class DummyModel(Model):
 
-    def __init__(self, start_pred=24):
+    def __init__(self, start_pred=0):
         self.start_pred = start_pred
 
-    def predict(self, x):
-        return self.start_pred + random.uniform(-0.2, 0.2)
+    def forward(self, x):
+        r1 = random.uniform(-0.2, 0.2)
+        r2 = random.uniform(-0.2, 0.2)
+        return torch.tensor([self.start_pred + r1, self.start_pred + r2])
