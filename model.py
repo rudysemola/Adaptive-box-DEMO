@@ -2,13 +2,7 @@ import random
 import torch
 
 
-class Model(torch.nn.Module):
-
-    def forward(self, x):
-        pass
-
-
-class DummyModel(Model):
+class DummyModel(torch.nn.Module):
 
     def __init__(self, start_pred=0):
         self.start_pred = start_pred
