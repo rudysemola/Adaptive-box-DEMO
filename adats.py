@@ -1,8 +1,8 @@
 from matplotlib import pyplot as plt
 import torch
-
 import model
 import copy
+
 
 class AdaTS:
     
@@ -32,10 +32,10 @@ class AdaTS:
         preds = []
         model_list = []
 
-        # begin inference and adaptation
+        # Begin inference and adaptation
         while True:
 
-            # wait for the next (1, n) tensor x
+            # Wait for the next (1, n) tensor x
             x = next(loader)
             print("Data {}: {}".format(self.dataset.count, x))
 
@@ -43,27 +43,28 @@ class AdaTS:
             #series = torch.cat((series, x))
             series.append(x)
 
-            # num. of predictions with corresponding true values
+            # Num. of predictions with corresponding true values
             labeled = self.dataset.count - self.p
             if labeled > 0:
+                # Training step
                 self.model.train()
                 p_model, p_optimizer = model_list.pop(0)
 
-                # compute gradients wrt old model used for the prediction
+                # Compute gradients wrt old model used for the prediction
                 # of this timestep
                 p_optimizer.zero_grad()
-                # compute loss(x, x_hat) and back prop (x_hat is a past prediction)
+                # Compute loss(x, x_hat) and back prop (x_hat is a past prediction)
                 loss = self.criterion(x, preds[-self.p].view(1, -1))
                 loss.backward()
 
-                # copy gradients
+                # Copy gradients to last model
                 for p1, p2 in zip(p_model.named_parameters(), self.model.named_parameters()):
                     p2[1].grad = p1[1].grad
 
-                # backprop
+                # Backprop on last model
                 self.optimizer.step()
             
-            # predict x_(i+p) using x_i, ..., x_(i-w_size+1)
+            # Predict x_(i+p) using x_i, ..., x_(i-w_size+1)
             #x_hat = self.model(torch.unsqueeze(series, dim=0))
             self.model.eval()
             x_hat = self.model(torch.unsqueeze(torch.cat(series), dim=0))
@@ -74,7 +75,7 @@ class AdaTS:
             preds.append(x_hat.view(1, -1))
             model_list.append((self.model, self.optimizer))
 
-            # create new model copying last one
+            # Create new model copying last one
             last_model, last_opt = model_list[-1][0], model_list[-1][1]
 
             self.model = last_model.clone()
@@ -83,13 +84,13 @@ class AdaTS:
             self.optimizer = type(last_opt)(self.model.parameters(), lr=last_opt.defaults['lr'])
             self.optimizer.load_state_dict(last_opt.state_dict())
 
-            # detection should start after the observation of the true value 
+            # Detection should start after the observation of the true value 
             # corresponding to the first prediction
             if labeled > 0:
-                # wait for detection window to be filled
+                # Wait for detection window to be filled
                 if labeled % self.detector.w_size == 0:
                     if self.detector.detect_change(torch.cat(series), torch.cat(preds), labeled):
-                        # TODO: handle anomaly, too many torch cats
+                        # TODO: Handle anomaly, too many torch cats
                         print("Anomaly!")
                         self.plot(torch.cat(series), torch.cat(preds))
 

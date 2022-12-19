@@ -1,6 +1,7 @@
 import random
 import torch
 import torch.nn as nn
+import torchesn.nn as esn
 
 
 class DummyModel(torch.nn.Module):
@@ -49,6 +50,7 @@ class RNN(nn.Module):
 
         return out
 
+
     def clone(self):
         return RNN(self.input_size, self.output_size, self.hidden_dim, self.n_layers)
         
@@ -58,3 +60,30 @@ class RNN(nn.Module):
         # We'll send the tensor holding the hidden state to the device we specified earlier as well
         hidden = torch.zeros(self.n_layers, batch_size, self.hidden_dim)
         return hidden
+
+
+class ESN(nn.Module):
+
+    def __init__(self, input_size, output_size, hidden_dim, washout_rate=0.2):
+        super(ESN, self).__init__()
+
+        self.input_size = input_size
+        self.output_size = output_size
+        self.hidden_dim = hidden_dim
+        self.washout_rate = washout_rate
+        self.esn = esn.ESN(input_size, hidden_dim,
+                           input_size, batch_first=True, readout_training='gd')
+    
+
+    def forward(self, x):
+        
+        batch_size = x.size(0)
+        washout = [int(self.washout_rate * x.size(1))] * x.size(0)
+
+        out, boh = self.esn(x, washout)
+
+        return out[0, -1]
+
+
+    def clone(self):
+        return ESN(self.input_size, self.output_size, self.hidden_dim)

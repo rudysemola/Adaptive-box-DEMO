@@ -1,14 +1,13 @@
 import time
 import torch
 from torch.utils.data import IterableDataset
-
 import math
 import random
 
+
 class SensorDataStream(IterableDataset):
 
-    def __init__(self, a, dt):
-        self.a = a
+    def __init__(self, dt):
         self.dt = dt
 
     def __iter__(self):
@@ -28,5 +27,4 @@ class SensorDataStream(IterableDataset):
             return torch.tensor([2*math.sin(2*self.count/2)+r1, 3*math.cos(2*self.count/2)+r2])
         else:
             return torch.tensor([math.sin(self.count/2)+r1, math.cos(self.count/2)+r2])
-        #return torch.tensor([self.a*self.count*self.count, self.a/2*self.count*self.count])
 
