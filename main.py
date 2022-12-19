@@ -9,8 +9,8 @@ import torch
 
 if __name__ == "__main__":
 
-    dt = 0.2 # time between consecutive points in the time series
-    p = 1 # timesteps into the future (p=1 -> next step)
+    dt = 0.02 # time between consecutive points in the time series
+    p = 5 # timesteps into the future (p=1 -> next step)
     t = 30 # MSE threshold for change detection
     a = 0.01 # indicates how fast the change is detected
     w_size_detection = 5 # detection window size
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     rnn = model.RNN(n_features, n_features, hidden_dim, n_layers)
 
     # Define hyperparameters
-    lr=0.1
+    lr=0.01
 
     # Define Loss, Optimizer
     criterion = nn.MSELoss()
@@ -47,7 +47,9 @@ if __name__ == "__main__":
         dataset=stream,
         dataloader=dataloader,
         detector=detector,
-        p=p
+        p=p,
+        print_every=60,
+        plot_last=60
     )
 
     adats.start_adaptation()

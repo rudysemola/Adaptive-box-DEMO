@@ -1,11 +1,14 @@
 from matplotlib import pyplot as plt
 import torch
 
+import model
+import copy
 
 class AdaTS:
     
     def __init__(self, model, optimizer, criterion,
-                 dataset, dataloader, detector, p):
+                 dataset, dataloader, detector, p,
+                 print_every, plot_last=-1):
         
         self.model = model
         self.optimizer = optimizer
@@ -14,6 +17,8 @@ class AdaTS:
         self.dataloader = dataloader
         self.detector = detector
         self.p = p
+        self.print_every = print_every
+        self.plot_last = plot_last
 
     
     def start_adaptation(self):
@@ -25,7 +30,7 @@ class AdaTS:
 
         series = []
         preds = []
-        #model_list = []
+        model_list = []
 
         # begin inference and adaptation
         while True:
@@ -42,26 +47,41 @@ class AdaTS:
             labeled = self.dataset.count - self.p
             if labeled > 0:
                 self.model.train()
+                p_model, p_optimizer = model_list.pop(0)
+
+                # compute gradients wrt old model used for the prediction
+                # of this timestep
+                p_optimizer.zero_grad()
                 # compute loss(x, x_hat) and back prop (x_hat is a past prediction)
-                #loss = torch.square(x - preds[-self.p])
-                # TODO: adapt model
-                self.optimizer.zero_grad()
                 loss = self.criterion(x, preds[-self.p].view(1, -1))
                 loss.backward()
+
+                # copy gradients
+                for p1, p2 in zip(p_model.named_parameters(), self.model.named_parameters()):
+                    p2[1].grad = p1[1].grad
+
+                # backprop
                 self.optimizer.step()
-                print("Point loss: ", loss)
             
             # predict x_(i+p) using x_i, ..., x_(i-w_size+1)
             #x_hat = self.model(torch.unsqueeze(series, dim=0))
             self.model.eval()
             x_hat = self.model(torch.unsqueeze(torch.cat(series), dim=0))
             print("Prediction: ", x_hat)
-            
-            #model_list.append(self.model.state_dict())
 
-            # Cat new pred
+            # Cat new prediction and model
             #preds = torch.cat((preds, x_hat.view(1, -1)))
             preds.append(x_hat.view(1, -1))
+            model_list.append((self.model, self.optimizer))
+
+            # create new model copying last one
+            last_model, last_opt = model_list[-1][0], model_list[-1][1]
+
+            self.model = last_model.clone()
+            self.model.load_state_dict(last_model.state_dict())
+
+            self.optimizer = type(last_opt)(self.model.parameters(), lr=last_opt.defaults['lr'])
+            self.optimizer.load_state_dict(last_opt.state_dict())
 
             # detection should start after the observation of the true value 
             # corresponding to the first prediction
@@ -73,7 +93,7 @@ class AdaTS:
                         print("Anomaly!")
                         self.plot(torch.cat(series), torch.cat(preds))
 
-            if self.dataset.count % 30 == 0:
+            if self.dataset.count % self.print_every == 0:
                 self.plot(torch.cat(series), torch.cat(preds))
 
             print()
@@ -81,15 +101,19 @@ class AdaTS:
     
     def plot(self, series, preds):
         
-        plt.figure(figsize=(14, 5))
+        if self.plot_last != -1:
+            series = series[-self.plot_last:]
+            preds = preds[-self.plot_last:]
+
+        plt.figure(figsize=(17, 5))
 
         plt.plot(range(0, len(series)), series, label='Data')
         
         offset = self.p
         plt.plot(range(offset, offset+len(preds)), preds.detach().numpy(), label='Predictions')
-        plt.axvline(self.p, color='orange', linestyle='--')
-        plt.axvline(self.p+self.detector.w_size-1, color='orange', linestyle='--')
-        plt.xticks(range(0, len(series)+self.p))
+        #plt.axvline(self.p, color='orange', linestyle='--')
+        #plt.axvline(self.p+self.detector.w_size-1, color='orange', linestyle='--')
+        #plt.xticks(range(0, len(series)+self.p))
 
         plt.legend()
         

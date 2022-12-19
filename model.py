@@ -22,6 +22,8 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
 
         # Defining some parameters
+        self.input_size = input_size
+        self.output_size = output_size
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
 
@@ -46,7 +48,10 @@ class RNN(nn.Module):
         out = self.fc(out)
 
         return out
-    
+
+    def clone(self):
+        return RNN(self.input_size, self.output_size, self.hidden_dim, self.n_layers)
+        
 
     def init_hidden(self, batch_size):
         # This method generates the first hidden state of zeros which we'll use in the forward pass
