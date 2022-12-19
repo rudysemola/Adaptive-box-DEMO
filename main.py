@@ -10,8 +10,8 @@ import torch
 if __name__ == "__main__":
 
     dt = 0.02 # time between consecutive points in the time series
-    p = 5 # timesteps into the future (p=1 -> next step)
-    t = 30 # MSE threshold for change detection
+    p = 10 # timesteps into the future (p=1 -> next step)
+    t = 3 # MSE threshold for change detection
     a = 0.01 # indicates how fast the change is detected
     w_size_detection = 5 # detection window size
     start_pred = 0 # see dummy model
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     rnn = model.RNN(n_features, n_features, hidden_dim, n_layers)
 
     # Define hyperparameters
-    lr=0.01
+    lr=0.005
 
     # Define Loss, Optimizer
     criterion = nn.MSELoss()

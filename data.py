@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import IterableDataset
 
 import math
-
+import random
 
 class SensorDataStream(IterableDataset):
 
@@ -18,6 +18,15 @@ class SensorDataStream(IterableDataset):
     def __next__(self):
         time.sleep(self.dt)
         self.count += 1
-        return torch.tensor([math.sin(self.count), 3+math.cos(self.count)])
+
+        r1 = random.uniform(-0.2, 0.2)
+        r2 = random.uniform(-0.2, 0.2)
+
+        if self.count > 1000:
+            return torch.tensor([math.sin(self.count/2)+r1, math.cos(self.count/2)+r2])
+        elif self.count > 500:
+            return torch.tensor([2*math.sin(2*self.count/2)+r1, 3*math.cos(2*self.count/2)+r2])
+        else:
+            return torch.tensor([math.sin(self.count/2)+r1, math.cos(self.count/2)+r2])
         #return torch.tensor([self.a*self.count*self.count, self.a/2*self.count*self.count])
 

@@ -105,9 +105,22 @@ class AdaTS:
             series = series[-self.plot_last:]
             preds = preds[-self.plot_last:]
 
-        plt.figure(figsize=(17, 5))
+        #plt.figure(figsize=(17, 5))
+        offset = self.p
+        
+        fig, axs = plt.subplots(2, 1)
+        axs[0].plot(range(0, len(series)), series[:, 0], label='Data')
+        axs[0].plot(range(offset, offset+len(preds)), preds.detach().numpy()[:, 0], label='Predictions')
+        axs[0].legend()
 
-        plt.plot(range(0, len(series)), series, label='Data')
+        axs[1].plot(range(0, len(series)), series[:, 1], label='Data')
+        axs[1].plot(range(offset, offset+len(preds)), preds.detach().numpy()[:, 1], label='Predictions')
+        axs[1].legend()
+
+        #plt.savefig('./plot.png', transparent=True)
+        plt.show()
+
+        """ plt.plot(range(0, len(series)), series, label='Data')
         
         offset = self.p
         plt.plot(range(offset, offset+len(preds)), preds.detach().numpy(), label='Predictions')
@@ -118,4 +131,4 @@ class AdaTS:
         plt.legend()
         
         plt.savefig('./plot.png', transparent=True)
-        plt.show()
+        plt.show() """
