@@ -11,7 +11,7 @@ from utils import count_parameters
 if __name__ == "__main__":
 
     dt = 0.02 # time between consecutive points in the time series
-    p = 10 # timesteps into the future (p=1 -> next step)
+    p = 20 # timesteps into the future (p=1 -> next step)
     t = 3 # MSE threshold for change detection
     w_size_detection = 5 # detection window size
 
@@ -20,20 +20,19 @@ if __name__ == "__main__":
     dataloader = DataLoader(stream)
 
     # RNN
-    """ n_features = 2
+    """ lr = 0.001
+    n_features = 2
     hidden_dim = 20
     n_layers = 1
     m = model.RNN(n_features, n_features, hidden_dim, n_layers)
     print(count_parameters(m)) """
 
     # ESN
+    lr = 0.005
     n_features = 2
     hidden_dim = 20
     m = model.ESN(n_features, n_features, hidden_dim)
     print(count_parameters(m))
-
-    # Define hyperparameters
-    lr=0.005
 
     # Define Loss, Optimizer
     criterion = nn.MSELoss()

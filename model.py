@@ -76,11 +76,9 @@ class ESN(nn.Module):
     
 
     def forward(self, x):
-        
-        batch_size = x.size(0)
-        washout = [int(self.washout_rate * x.size(1))] * x.size(0)
 
-        out, boh = self.esn(x, washout)
+        washout = [int(self.washout_rate * x.size(1))] * x.size(0)
+        out, _ = self.esn(x, washout)
 
         return out[0, -1]
 

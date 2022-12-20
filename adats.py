@@ -25,9 +25,6 @@ class AdaTS:
 
         loader = iter(self.dataloader)
 
-        """ series = torch.tensor([])
-        preds = torch.tensor([]) """
-
         series = []
         preds = []
         model_list = []
@@ -40,7 +37,6 @@ class AdaTS:
             print("Data {}: {}".format(self.dataset.count, x))
 
             # Cat new data
-            #series = torch.cat((series, x))
             series.append(x)
 
             # Num. of predictions with corresponding true values
@@ -48,10 +44,10 @@ class AdaTS:
             if labeled > 0:
                 # Training step
                 self.model.train()
-                p_model, p_optimizer = model_list.pop(0)
 
                 # Compute gradients wrt old model used for the prediction
-                # of this timestep
+                # of current timestep
+                p_model, p_optimizer = model_list.pop(0)
                 p_optimizer.zero_grad()
                 # Compute loss(x, x_hat) and back prop (x_hat is a past prediction)
                 loss = self.criterion(x, preds[-self.p].view(1, -1))
@@ -65,13 +61,11 @@ class AdaTS:
                 self.optimizer.step()
             
             # Predict x_(i+p) using x_i, ..., x_(i-w_size+1)
-            #x_hat = self.model(torch.unsqueeze(series, dim=0))
             self.model.eval()
             x_hat = self.model(torch.unsqueeze(torch.cat(series), dim=0))
             print("Prediction: ", x_hat)
 
             # Cat new prediction and model
-            #preds = torch.cat((preds, x_hat.view(1, -1)))
             preds.append(x_hat.view(1, -1))
             model_list.append((self.model, self.optimizer))
 
@@ -106,30 +100,15 @@ class AdaTS:
             series = series[-self.plot_last:]
             preds = preds[-self.plot_last:]
 
-        #plt.figure(figsize=(17, 5))
         offset = self.p
-        
-        fig, axs = plt.subplots(2, 1)
-        axs[0].plot(range(0, len(series)), series[:, 0], label='Data')
-        axs[0].plot(range(offset, offset+len(preds)), preds.detach().numpy()[:, 0], label='Predictions')
-        axs[0].legend()
+        n_features = series.size(dim=1)
+        _, axs = plt.subplots(n_features, 1, figsize=(17, 5))
 
-        axs[1].plot(range(0, len(series)), series[:, 1], label='Data')
-        axs[1].plot(range(offset, offset+len(preds)), preds.detach().numpy()[:, 1], label='Predictions')
-        axs[1].legend()
+        for i in range(n_features):
+            axs[i].plot(range(0, len(series)), series[:, i], label='Data')
+            axs[i].plot(range(offset, offset+len(preds)), 
+                        preds.detach().numpy()[:, i], label='Predictions')
+            axs[i].legend()
 
         #plt.savefig('./plot.png', transparent=True)
         plt.show()
-
-        """ plt.plot(range(0, len(series)), series, label='Data')
-        
-        offset = self.p
-        plt.plot(range(offset, offset+len(preds)), preds.detach().numpy(), label='Predictions')
-        #plt.axvline(self.p, color='orange', linestyle='--')
-        #plt.axvline(self.p+self.detector.w_size-1, color='orange', linestyle='--')
-        #plt.xticks(range(0, len(series)+self.p))
-
-        plt.legend()
-        
-        plt.savefig('./plot.png', transparent=True)
-        plt.show() """
