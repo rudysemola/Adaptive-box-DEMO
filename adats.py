@@ -1,14 +1,13 @@
 from matplotlib import pyplot as plt
 import torch
-import model
-import copy
 
 
 class AdaTS:
     
     def __init__(self, model, optimizer, criterion,
                  dataset, dataloader, detector, p,
-                 print_every, plot_last=-1):
+                 w_size_prediction, plot_every, print_every,
+                 plot_last=-1):
         
         self.model = model
         self.optimizer = optimizer
@@ -17,6 +16,8 @@ class AdaTS:
         self.dataloader = dataloader
         self.detector = detector
         self.p = p
+        self.w_size_prediction = w_size_prediction
+        self.plot_every = plot_every
         self.print_every = print_every
         self.plot_last = plot_last
 
@@ -34,7 +35,6 @@ class AdaTS:
 
             # Wait for the next (1, n) tensor x
             x = next(loader)
-            print("Data {}: {}".format(self.dataset.count, x))
 
             # Cat new data
             series.append(x)
@@ -62,8 +62,14 @@ class AdaTS:
             
             # Predict x_(i+p) using x_i, ..., x_(i-w_size+1)
             self.model.eval()
-            x_hat = self.model(torch.unsqueeze(torch.cat(series), dim=0))
-            print("Prediction: ", x_hat)
+            x_hat = self.model(torch.unsqueeze(torch.cat(series[-self.w_size_prediction:]), dim=0))
+            
+            if self.dataset.count % self.print_every == 0:
+                print("\n------------------------")
+                print("Data {}: {}".format(self.dataset.count, x))
+                print("Prediction: ", x_hat.data)
+                print("------------------------")
+
 
             # Cat new prediction and model
             preds.append(x_hat.view(1, -1))
@@ -75,7 +81,8 @@ class AdaTS:
             self.model = last_model.clone()
             self.model.load_state_dict(last_model.state_dict())
 
-            self.optimizer = type(last_opt)(self.model.parameters(), lr=last_opt.defaults['lr'])
+            self.optimizer = type(last_opt)(self.model.parameters(), 
+                                            lr=last_opt.defaults['lr'])
             self.optimizer.load_state_dict(last_opt.state_dict())
 
             # Detection should start after the observation of the true value 
@@ -83,15 +90,17 @@ class AdaTS:
             if labeled > 0:
                 # Wait for detection window to be filled
                 if labeled % self.detector.w_size == 0:
-                    if self.detector.detect_change(torch.cat(series), torch.cat(preds), labeled):
+                    det, mse = self.detector.detect_change(torch.cat(series), 
+                                                           torch.cat(preds), labeled)
+                    if det:
                         # TODO: Handle anomaly, too many torch cats
-                        print("Anomaly!")
-                        self.plot(torch.cat(series), torch.cat(preds))
+                        print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t, mse.item()))
+                        #self.plot(torch.cat(series), torch.cat(preds))
 
-            if self.dataset.count % self.print_every == 0:
+            if self.dataset.count % self.plot_every == 0:
                 self.plot(torch.cat(series), torch.cat(preds))
 
-            print()
+            #print()
 
     
     def plot(self, series, preds):
@@ -102,13 +111,22 @@ class AdaTS:
 
         offset = self.p
         n_features = series.size(dim=1)
-        _, axs = plt.subplots(n_features, 1, figsize=(17, 5))
 
-        for i in range(n_features):
-            axs[i].plot(range(0, len(series)), series[:, i], label='Data')
-            axs[i].plot(range(offset, offset+len(preds)), 
-                        preds.detach().numpy()[:, i], label='Predictions')
-            axs[i].legend()
+        if n_features == 1:
+            _, axs = plt.subplots(n_features, 1, figsize=(17, 4))
+
+            axs.plot(range(0, len(series)), series[:, 0], label='Data')
+            axs.plot(range(offset, offset+len(preds)), 
+                        preds.detach().numpy()[:, 0], label='Predictions')
+            axs.legend() 
+        else:
+            _, axs = plt.subplots(n_features, 1, figsize=(17, 5))
+
+            for i in range(n_features):
+                axs[i].plot(range(0, len(series)), series[:, i], label='Data')
+                axs[i].plot(range(offset, offset+len(preds)), 
+                            preds.detach().numpy()[:, i], label='Predictions')
+                axs[i].legend()
 
         #plt.savefig('./plot.png', transparent=True)
         plt.show()

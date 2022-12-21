@@ -16,8 +16,6 @@ class Detector:
 
         mse = torch.mean(torch.square(true - pred))
 
-        print("Mse: ", mse)
-
-        return mse > self.t
+        return mse > self.t, mse
 
 
