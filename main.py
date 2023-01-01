@@ -21,7 +21,7 @@ if __name__ == "__main__":
     w_size_detection = 5 # detection window size
     w_size_prediction = 200 # prediction window size
 
-    test_db = True
+    test_db = False
 
     # Create dataset and dataloader
     stream = SensorDataStream(dt, ranges=[(-3, 3)])
