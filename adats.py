@@ -22,7 +22,7 @@ class AdaTS:
         self.plot_last = plot_last
 
     
-    def start_adaptation(self):
+    def start_adaptation(self, db_callback1=None, db_callback2=None, plot=False):
 
         loader = iter(self.dataloader)
 
@@ -42,6 +42,11 @@ class AdaTS:
             # Num. of predictions with corresponding true values
             labeled = self.dataset.count - self.p
             if labeled > 0:
+
+                # Write to db
+                if db_callback1 is not None:
+                    db_callback1(x.item(), preds[-self.p].item())
+
                 # Training step
                 self.model.train()
 
@@ -92,12 +97,16 @@ class AdaTS:
                 if labeled % self.detector.w_size == 0:
                     det, mse = self.detector.detect_change(torch.cat(series), 
                                                            torch.cat(preds), labeled)
+
+                    if db_callback2 is not None:
+                        # Push detection value to db
+                        db_callback2(int(det))
+
                     if det:
                         # TODO: Handle anomaly, too many torch cats
                         print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t, mse.item()))
-                        #self.plot(torch.cat(series), torch.cat(preds))
 
-            if self.dataset.count % self.plot_every == 0:
+            if plot and (self.dataset.count % self.plot_every) == 0:
                 self.plot(torch.cat(series), torch.cat(preds))
 
             #print()

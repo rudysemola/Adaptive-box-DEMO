@@ -7,6 +7,11 @@ from data import SensorDataStream
 import torch
 from utils import count_parameters
 
+from influxdb_client import InfluxDBClient
+from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client import InfluxDBClient, Point, WritePrecision
+from datetime import datetime
+
 
 if __name__ == "__main__":
 
@@ -14,7 +19,9 @@ if __name__ == "__main__":
     p = 20 # timesteps into the future (p=1 -> next step)
     t = 1 # MSE threshold for change detection
     w_size_detection = 5 # detection window size
-    w_size_prediction = 60 # prediction window size
+    w_size_prediction = 200 # prediction window size
+
+    test_db = True
 
     # Create dataset and dataloader
     stream = SensorDataStream(dt, ranges=[(-3, 3)])
@@ -64,4 +71,43 @@ if __name__ == "__main__":
         plot_last=360
     )
 
-    adats.start_adaptation()
+    # You can generate an API token from the "API Tokens Tab" in the UI
+    url = "http://localhost:8086"
+    token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
+    org = "continualist"
+    bucket = "demo"
+
+
+    if test_db:
+        with InfluxDBClient(url=url, token=token, org=org) as client:
+
+            write_api = client.write_api(write_options=SYNCHRONOUS)
+
+
+            def write_db1(x_real, x_pred):
+
+                x_real = str(x_real)
+                x_pred = str(x_pred)
+
+                sequence = ["sensor,type=real_data temperature="+x_real,
+                            "sensor,type=predicted temperature="+x_pred]
+                write_api.write(bucket, org, sequence)
+
+
+            def write_db2(det):
+
+                """ sequence = ["monitoring,type=real_data temperature="+x_real,
+                            "sensor,type=predicted temperature="+x_pred]
+                write_api.write(bucket, org, sequence) """
+
+                point = Point("monitoring") \
+                    .field("det", det) \
+                    .time(datetime.utcnow(), WritePrecision.NS)
+
+                write_api.write(bucket, org, point)
+
+
+            adats.start_adaptation(db_callback1=write_db1, db_callback2=write_db2)
+
+    else:
+        adats.start_adaptation(plot=True)

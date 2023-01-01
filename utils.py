@@ -14,6 +14,5 @@ def map_to_range(x, start_range, end_range):
 
 
 def clamp(x, range):
-    
     v_min, v_max = range
     return min(max(x, v_min), v_max)
