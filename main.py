@@ -30,19 +30,19 @@ if __name__ == "__main__":
     # RNN
     """ lr = 0.005
     hidden_dim = 20 """
-    lr = 0.001
+    """ lr = 0.001
     hidden_dim = 64
     n_features = 1
     n_layers = 1
     m = model.RNN(n_features, n_features, hidden_dim, n_layers)
-    print("Number of parameters: ", count_parameters(m))
+    print("Number of parameters: ", count_parameters(m)) """
 
     # ESN
-    """ lr = 0.0001
+    lr = 0.0001
     n_features = 1
-    hidden_dim = 256
+    hidden_dim = 128
     m = model.ESN(n_features, n_features, hidden_dim)
-    print("Number of parameters: ", count_parameters(m)) """
+    print("Number of parameters: ", count_parameters(m))
     
     print("------------------------\n")
 
@@ -72,9 +72,9 @@ if __name__ == "__main__":
     )
 
     # You can generate an API token from the "API Tokens Tab" in the UI
-    url = "http://localhost:8086"
-    token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
-    org = "continualist"
+    url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
+    token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low=="
+    org = "Demo"
     bucket = "demo"
 
 

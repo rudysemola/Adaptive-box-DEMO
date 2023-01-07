@@ -25,9 +25,9 @@ class SensorDataStream(IterableDataset):
         s = 10
 
         # gather T from sensors
-        # map from ~22 -> ~80 to 1.5 -> 2 
+        # map from ~22 -> ~80 to 1.5 -> 2
         # T = map_to_range(T, (22, 80), (1.5, 2))
-
+        
         v1 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
         T = 2
         v2 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
@@ -36,7 +36,7 @@ class SensorDataStream(IterableDataset):
         
         if self.count < 600:
             x = torch.tensor([v1])
-        elif self.count < 1800:
+        elif self.count < 1200:
             x = torch.tensor([v2])
         else:
             x = torch.tensor([v3])
