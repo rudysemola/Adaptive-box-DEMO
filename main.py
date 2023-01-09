@@ -3,7 +3,7 @@ import model
 import detector
 from torch.utils.data import DataLoader
 import torch.nn as nn
-from data import SensorDataStream
+from data import MockDataStream, SensorDataStream 
 import torch
 from utils import count_parameters
 
@@ -21,7 +21,8 @@ if __name__ == "__main__":
     w_size_detection = 5 # detection window size
     w_size_prediction = 200 # prediction window size
 
-    test_db = False
+    test_db = True
+    plot = False
 
     # Create dataset and dataloader
     stream = SensorDataStream(dt, ranges=[(-3, 3)])
@@ -38,11 +39,11 @@ if __name__ == "__main__":
     print("Number of parameters: ", count_parameters(m))
 
     # ESN
-    """ lr = 0.0001
+    """lr = 0.0001
     n_features = 1
     hidden_dim = 256
     m = model.ESN(n_features, n_features, hidden_dim)
-    print("Number of parameters: ", count_parameters(m)) """
+    print("Number of parameters: ", count_parameters(m))"""
     
     print("------------------------\n")
 
@@ -72,9 +73,9 @@ if __name__ == "__main__":
     )
 
     # You can generate an API token from the "API Tokens Tab" in the UI
-    url = "http://localhost:8086"
-    token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
-    org = "continualist"
+    url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
+    token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low==" 
+    org = "Demo"
     bucket = "demo"
 
 
@@ -110,4 +111,4 @@ if __name__ == "__main__":
             adats.start_adaptation(db_callback1=write_db1, db_callback2=write_db2)
 
     else:
-        adats.start_adaptation(plot=True)
+        adats.start_adaptation(plot=plot)
