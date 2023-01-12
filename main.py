@@ -1,47 +1,50 @@
-import adats
-import model
-import detector
-from torch.utils.data import DataLoader
-import torch.nn as nn
-from data import SensorDataStream
-import torch
-from utils import count_parameters
+from datetime import datetime
 
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client import InfluxDBClient, Point, WritePrecision
-from datetime import datetime
+
+import adats
+import model
+import detector
+from data import SensorDataStream
+from utils import count_parameters
 
 
 if __name__ == "__main__":
 
-    dt = 0.02 # time between consecutive points in the time series
-    p = 20 # timesteps into the future (p=1 -> next step)
+    dt = 0.02 # Time between consecutive points in the time series
+    p = 1 # Timesteps into the future (p=1 -> next step)
     t = 1 # MSE threshold for change detection
-    w_size_detection = 5 # detection window size
-    w_size_prediction = 200 # prediction window size
+    w_size_detection = 5 # Detection window size
+    w_size_prediction = 200 # Prediction window size
 
     test_db = False
 
     # Create dataset and dataloader
-    stream = SensorDataStream(dt, ranges=[(-3, 3)])
+    stream = SensorDataStream(dt, ranges=[])
+    #stream = SensorDataStream(dt, ranges=[(-3, 3)])
     dataloader = DataLoader(stream)
 
     # RNN
     """ lr = 0.005
     hidden_dim = 20 """
-    """ lr = 0.001
+    """ lr = 0.01
     hidden_dim = 64
-    n_features = 1
+    n_features = 2
     n_layers = 1
     m = model.RNN(n_features, n_features, hidden_dim, n_layers)
     print("Number of parameters: ", count_parameters(m)) """
 
     # ESN
-    lr = 0.0001
+    lr = 0.005
     n_features = 1
-    hidden_dim = 128
-    m = model.ESN(n_features, n_features, hidden_dim)
+    hidden_dim = 64
+    n_layers = 1
+    m = model.ESN(n_features, n_features, hidden_dim, n_layers=n_layers)
     print("Number of parameters: ", count_parameters(m))
     
     print("------------------------\n")

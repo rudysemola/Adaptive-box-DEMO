@@ -1,7 +1,5 @@
-from matplotlib import pyplot as plt
 import torch
-
-import time
+from matplotlib import pyplot as plt
 
 
 class AdaTS:
@@ -28,6 +26,7 @@ class AdaTS:
 
         loader = iter(self.dataloader)
 
+        # TODO: Fix out of memory
         series = []
         preds = []
         model_list = []
@@ -41,35 +40,36 @@ class AdaTS:
             # Cat new data
             series.append(x)
 
-            # Num. of predictions with corresponding true values
+            # Predictions with corresponding true values
             labeled = self.dataset.count - self.p
+            
             if labeled > 0:
 
                 # Write to db
                 if db_callback1 is not None:
-                    db_callback1(x.item(), preds[-self.p].item())
+                    db_callback1(x[0, 0].item(), preds[-self.p][0, 0].item())
 
-                # Training step
                 self.model.train()
 
-                # Compute gradients wrt old model used for the prediction
+                # Compute gradients wrt the old model used for the prediction
                 # of current timestep
-                p_model, p_optimizer = model_list.pop(0)
-                p_optimizer.zero_grad()
+                prev_model, prev_optimizer = model_list.pop(0)
+                prev_optimizer.zero_grad()
                 # Compute loss(x, x_hat) and back prop (x_hat is a past prediction)
                 loss = self.criterion(x, preds[-self.p].view(1, -1))
                 loss.backward()
 
                 # Copy gradients to last model
-                for p1, p2 in zip(p_model.named_parameters(), self.model.named_parameters()):
-                    p2[1].grad = p1[1].grad
+                for prev_p, curr_p in zip(prev_model.parameters(), self.model.parameters()):
+                    curr_p.grad = prev_p.grad
 
-                # Backprop on last model
+                # Backprop on current model
                 self.optimizer.step()
             
             # Predict x_(i+p) using x_i, ..., x_(i-w_size+1)
             self.model.eval()
-            x_hat = self.model(torch.unsqueeze(torch.cat(series[-self.w_size_prediction:]), dim=0))
+            x_hat = self.model(torch.unsqueeze(torch.cat(series[-self.w_size_prediction:]),
+                                                         dim=0))
             
             if self.dataset.count % self.print_every == 0:
                 print("\n------------------------")
@@ -82,12 +82,13 @@ class AdaTS:
             preds.append(x_hat.view(1, -1))
             model_list.append((self.model, self.optimizer))
 
-            # Create new model copying last one
-            last_model, last_opt = model_list[-1][0], model_list[-1][1]
+            last_model, last_opt = model_list[-1]
 
+            # Create new model cloning the last one
             self.model = last_model.clone()
             self.model.load_state_dict(last_model.state_dict())
 
+            # Create new optimizer cloning the last one
             self.optimizer = type(last_opt)(self.model.parameters(), 
                                             lr=last_opt.defaults['lr'])
             self.optimizer.load_state_dict(last_opt.state_dict())
@@ -106,10 +107,12 @@ class AdaTS:
 
                     if det:
                         # TODO: Handle anomaly, too many torch cats
-                        print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t, mse.item()))
+                        print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t,
+                                                                              mse.item()))
 
             if plot and (self.dataset.count % self.plot_every) == 0:
                 self.plot(torch.cat(series), torch.cat(preds))
+
 
             #print()
 
@@ -139,5 +142,4 @@ class AdaTS:
                             preds.detach().numpy()[:, i], label='Predictions')
                 axs[i].legend()
 
-        #plt.savefig('./plot.png', transparent=True)
         plt.show()
