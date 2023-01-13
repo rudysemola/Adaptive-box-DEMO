@@ -17,15 +17,16 @@ from utils import count_parameters
 if __name__ == "__main__":
 
     dt = 0.02 # Time between consecutive points in the time series
-    p = 1 # Timesteps into the future (p=1 -> next step)
+    p = 20 # Timesteps into the future (p=1 -> next step)
     t = 1 # MSE threshold for change detection
     w_size_detection = 5 # Detection window size
     w_size_prediction = 200 # Prediction window size
+    n_features = 1
 
     test_db = False
 
     # Create dataset and dataloader
-    stream = SensorDataStream(dt, ranges=[])
+    stream = SensorDataStream(dt, n_features=n_features, ranges=[])
     #stream = SensorDataStream(dt, ranges=[(-3, 3)])
     dataloader = DataLoader(stream)
 
@@ -34,17 +35,15 @@ if __name__ == "__main__":
     hidden_dim = 20 """
     """ lr = 0.01
     hidden_dim = 64
-    n_features = 2
     n_layers = 1
     m = model.RNN(n_features, n_features, hidden_dim, n_layers)
     print("Number of parameters: ", count_parameters(m)) """
 
     # ESN
-    lr = 0.005
-    n_features = 1
-    hidden_dim = 64
+    lr = 0.01
+    hidden_dim = 128
     n_layers = 1
-    m = model.ESN(n_features, n_features, hidden_dim, n_layers=n_layers)
+    m = model.ESN(n_features, n_features*p, hidden_dim, n_layers=n_layers)
     print("Number of parameters: ", count_parameters(m))
     
     print("------------------------\n")
@@ -69,7 +68,7 @@ if __name__ == "__main__":
         detector=det,
         p=p,
         w_size_prediction=w_size_prediction,
-        plot_every=120,
+        plot_every=40,
         print_every=20,
         plot_last=360
     )

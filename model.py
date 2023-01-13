@@ -1,7 +1,6 @@
 import random
 import torch
 import torch.nn as nn
-import torchesn.nn as esn
 from esn import DeepReservoirClassifier
 
 
@@ -28,7 +27,8 @@ class RNN(nn.Module):
         return out
 
     def clone(self):
-        return RNN(self.input_size, self.output_size, self.hidden_dim, self.n_layers)
+        return RNN(self.input_size, self.output_size,
+                   self.hidden_dim, self.n_layers)
 
     def init_hidden(self, batch_size):
         hidden = torch.zeros(self.n_layers, batch_size, self.hidden_dim)

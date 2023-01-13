@@ -9,8 +9,9 @@ import utils
 
 class SensorDataStream(IterableDataset):
 
-    def __init__(self, dt, ranges=[]):
+    def __init__(self, dt, n_features, ranges=[]):
         self.dt = dt
+        self.n_features = n_features
         self.ranges = torch.tensor(ranges)
 
     def __iter__(self):
@@ -35,13 +36,13 @@ class SensorDataStream(IterableDataset):
         v2 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
         
         if self.count < 600:
-            x = torch.tensor([v1])
+            x = torch.tensor([v2]*self.n_features)
         elif self.count < 1200:
-            x = torch.tensor([v2])
+            x = torch.tensor([v1]*self.n_features)
         elif self.count < 1800:
-            x = torch.tensor([v1])
+            x = torch.tensor([v2]*self.n_features)
         else:
-            x = torch.tensor([v2])
+            x = torch.tensor([v1]*self.n_features)
 
         if len(self.ranges) != 0:
             x = self.preprocess_data(x)

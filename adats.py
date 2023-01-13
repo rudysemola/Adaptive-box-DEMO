@@ -46,8 +46,8 @@ class AdaTS:
             if labeled > 0:
 
                 # Write to db
-                if db_callback1 is not None:
-                    db_callback1(x[0, 0].item(), preds[-self.p][0, 0].item())
+                """ if db_callback1 is not None:
+                    db_callback1(x[0, 0].item(), preds[-self.p][0, 0].item()) """
 
                 self.model.train()
 
@@ -56,11 +56,14 @@ class AdaTS:
                 prev_model, prev_optimizer = model_list.pop(0)
                 prev_optimizer.zero_grad()
                 # Compute loss(x, x_hat) and back prop (x_hat is a past prediction)
-                loss = self.criterion(x, preds[-self.p].view(1, -1))
+                #loss = self.criterion(x, preds[-self.p].view(1, -1))
+                loss = self.criterion(torch.cat(series[-self.p:]).view(1, -1),
+                                      preds[-self.p].view(1, -1))
                 loss.backward()
 
                 # Copy gradients to last model
-                for prev_p, curr_p in zip(prev_model.parameters(), self.model.parameters()):
+                for prev_p, curr_p in zip(prev_model.parameters(),
+                                          self.model.parameters()):
                     curr_p.grad = prev_p.grad
 
                 # Backprop on current model
@@ -79,7 +82,8 @@ class AdaTS:
 
 
             # Cat new prediction and model
-            preds.append(x_hat.view(1, -1))
+            #preds.append(x_hat.view(1, -1))
+            preds.append(x_hat)
             model_list.append((self.model, self.optimizer))
 
             last_model, last_opt = model_list[-1]
@@ -95,7 +99,7 @@ class AdaTS:
 
             # Detection should start after the observation of the true value 
             # corresponding to the first prediction
-            if labeled > 0:
+            """ if labeled > 0:
                 # Wait for detection window to be filled
                 if labeled % self.detector.w_size == 0:
                     det, mse = self.detector.detect_change(torch.cat(series), 
@@ -108,15 +112,72 @@ class AdaTS:
                     if det:
                         # TODO: Handle anomaly, too many torch cats
                         print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t,
-                                                                              mse.item()))
+                                                                              mse.item())) """
 
             if plot and (self.dataset.count % self.plot_every) == 0:
-                self.plot(torch.cat(series), torch.cat(preds))
+                self.plot_future(torch.cat(series), torch.cat(preds))
 
 
             #print()
 
-    
+
+    def plot_all(self, series, preds):
+        
+        if self.plot_last != -1:
+            series = series[-self.plot_last:]
+            preds = preds[-self.plot_last:]
+
+        offset = self.p
+        n_features = series.size(dim=1)
+
+        if n_features == 1:
+            _, axs = plt.subplots(n_features, 1, figsize=(17, 4))
+
+            axs.plot(range(0, len(series)), series, label='Data')
+            axs.plot(range(offset, offset+len(preds)), 
+                        preds.detach().numpy()[:, -1], label='Predictions')
+            axs.legend() 
+        else:
+            _, axs = plt.subplots(n_features, 1, figsize=(17, 5))
+
+            for i in range(n_features):
+                axs[i].plot(range(0, len(series)), series[:, i], label='Data')
+                axs[i].plot(range(offset, offset+len(preds)), 
+                            preds.detach().numpy()[:, i], label='Predictions')
+                axs[i].legend()
+
+        plt.show()
+
+
+    def plot_future(self, series, preds):
+        
+        if self.plot_last != -1:
+            series = series[-self.plot_last:]
+
+        pred = preds[-1].view(self.p, -1)
+
+        offset = self.p
+        n_features = series.size(dim=1)
+
+        if n_features == 1:
+            _, axs = plt.subplots(n_features, 1, figsize=(17, 4))
+
+            axs.plot(range(0, len(series)), series[:, 0], label='Data')
+            axs.plot(range(len(series), len(series)+self.p), 
+                        pred.detach().numpy()[:, 0], label='Predictions')
+            axs.legend() 
+        else:
+            _, axs = plt.subplots(n_features, 1, figsize=(17, 5))
+
+            for i in range(n_features):
+                axs[i].plot(range(0, len(series)), series[:, i], label='Data')
+                axs[i].plot(range(offset, offset+len(preds)), 
+                            preds.detach().numpy()[:, i], label='Predictions')
+                axs[i].legend()
+
+        plt.show()
+
+
     def plot(self, series, preds):
         
         if self.plot_last != -1:
