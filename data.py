@@ -34,14 +34,21 @@ class SensorDataStream(IterableDataset):
         T = 2
         v2 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
         
-        if self.count < 600:
+        ''' if self.count < 600:
             x = torch.tensor([v1])
         elif self.count < 1200:
             x = torch.tensor([v2])
         elif self.count < 1800:
             x = torch.tensor([v1])
         else:
-            x = torch.tensor([v2])
+            x = torch.tensor([v2]) '''
+        
+        if self.count < 1000:
+            x = torch.tensor([v2, v1])
+        else:
+            x = torch.tensor([v1, v2])
+
+        #x = torch.tensor([v1])
 
         if len(self.ranges) != 0:
             x = self.preprocess_data(x)
@@ -52,5 +59,3 @@ class SensorDataStream(IterableDataset):
         x = torch.clamp(x, min=self.ranges[:, 0], max=self.ranges[:, 1])
         x = utils.map_to_range(x, self.ranges[:, 0], self.ranges[:, 1], -1, 1)
         return x
-
-            
