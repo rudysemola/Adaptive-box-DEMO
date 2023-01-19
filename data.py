@@ -62,43 +62,6 @@ class MockDataStream(IterableDataset):
         return self
 
     def __next__(self):
-
-        time.sleep(self.dt)
-        self.count += 1
-        humidity, temperature = Adafruit_DHT.read(self.sensor, self.pin)
-        
-        if temperature is not None:
-            self.temperature = temperature
-
-        b = 0.2
-        c = 10
-        s = 10
-
-        # gather T from sensors
-        # map from ~22 -> ~80 to 1.5 -> 2 
-        # T = map_to_range(T, (22, 80), (1.5, 2))
-
-        T = utils.map_to_range(self.temperature, (15, 80), (1.5, 2))
-
-        v = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
-
-        x = torch.tensor([v])
-
-        #x = self.preprocess(x)
-        return x
-
-
-class MockDataStream(IterableDataset):
-
-    def __init__(self, dt, ranges):
-        self.dt = dt
-        self.ranges = ranges
-
-    def __iter__(self):
-        self.count = 0
-        return self
-
-    def __next__(self):
         time.sleep(self.dt)
         self.count += 1
 
