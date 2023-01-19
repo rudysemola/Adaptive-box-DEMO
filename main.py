@@ -1,55 +1,65 @@
-import adats
-import model
-import detector
-from torch.utils.data import DataLoader
-import torch.nn as nn
-from data import MockDataStream, SensorDataStream 
-import torch
-from utils import count_parameters
+from datetime import datetime
 
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import ExponentialLR
 from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 from influxdb_client import InfluxDBClient, Point, WritePrecision
-from datetime import datetime
+
+import adats
+import model
+import detector
+from data import MockDataStream, SensorDataStream 
+from utils import count_parameters
 
 
 if __name__ == "__main__":
 
-    dt = 0.02 # time between consecutive points in the time series
-    p = 20 # timesteps into the future (p=1 -> next step)
-    t = 1 # MSE threshold for change detection
-    w_size_detection = 5 # detection window size
-    w_size_prediction = 200 # prediction window size
+    dt = 0.01 # Sleep time before gathering the next point in the time series
+    p = 20 # Timesteps into the future (p=1 -> next step)
+    t = 0.2 # MSE threshold for change detection
+    w_size_detection = 5 # Detection window size
+    w_size_prediction = 50 # Prediction window size
+    replay_mem_size = 200
+    n_features = 2
+
+    plot_every = 140
+    print_every = 20
+    plot_last = 300
+    stop_after = None
 
     test_db = True
     plot = False
 
     # Create dataset and dataloader
-    stream = SensorDataStream(dt, ranges=[(-3, 3)])
+    stream = SensorDataStream(dt, ranges=[(-2, 2), (-2, 2)])
+    #stream = SensorDataStream(dt, ranges=[(-3, 3)])
     dataloader = DataLoader(stream)
 
     # RNN
-    """ lr = 0.005
-    hidden_dim = 20 """
     lr = 0.001
+    gamma = 0.999
     hidden_dim = 64
-    n_features = 1
     n_layers = 1
     m = model.RNN(n_features, n_features, hidden_dim, n_layers)
     print("Number of parameters: ", count_parameters(m))
 
-    # ESN
-    """lr = 0.0001
+    """ # ESN
+    lr = 0.005
     n_features = 1
-    hidden_dim = 256
-    m = model.ESN(n_features, n_features, hidden_dim)
-    print("Number of parameters: ", count_parameters(m))"""
+    hidden_dim = 64
+    n_layers = 1
+    m = model.ESN(n_features, n_features, hidden_dim, n_layers=n_layers)
+    print("Number of parameters: ", count_parameters(m)) """
     
     print("------------------------\n")
 
     # Define Loss, Optimizer
     criterion = nn.MSELoss()
-    optimizer = torch.optim.SGD(m.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(m.parameters(), lr=lr)
+    lr_scheduler = ExponentialLR(optimizer, gamma)
 
     det = detector.Detector(
         w_size=w_size_detection,
@@ -57,24 +67,30 @@ if __name__ == "__main__":
         t=t
     )
 
+    plot_every = (None if test_db else plot_every)
+    replay_mem = adats.ReplayMemory(capacity=replay_mem_size)
+
     # Setting up the adaptive time series algorithm
     adats = adats.AdaTS(
         model=m,
         optimizer=optimizer,
+        lr_scheduler=lr_scheduler,
         criterion=criterion,
         dataset=stream,
         dataloader=dataloader,
         detector=det,
         p=p,
         w_size_prediction=w_size_prediction,
-        plot_every=120,
-        print_every=20,
-        plot_last=360
+        replay_mem=replay_mem,
+        plot_every=plot_every,
+        print_every=print_every,
+        plot_last=plot_last,
+        stop_after=stop_after
     )
 
     # You can generate an API token from the "API Tokens Tab" in the UI
     url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
-    token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low==" 
+    token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low=="
     org = "Demo"
     bucket = "demo"
 
@@ -111,4 +127,4 @@ if __name__ == "__main__":
             adats.start_adaptation(db_callback1=write_db1, db_callback2=write_db2)
 
     else:
-        adats.start_adaptation(plot=plot)
+        adats.start_adaptation()
