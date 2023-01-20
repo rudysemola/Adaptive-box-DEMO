@@ -17,13 +17,13 @@ from utils import count_parameters
 
 if __name__ == "__main__":
 
-    dt = 0.01 # Sleep time before gathering the next point in the time series
+    dt = 0 # Sleep time before gathering the next point in the time series
     p = 20 # Timesteps into the future (p=1 -> next step)
     t = 0.2 # MSE threshold for change detection
     w_size_detection = 5 # Detection window size
     w_size_prediction = 50 # Prediction window size
     replay_mem_size = 200
-    n_features = 2
+    n_features = 1
 
     plot_every = 140
     print_every = 20
@@ -34,8 +34,8 @@ if __name__ == "__main__":
     plot = False
 
     # Create dataset and dataloader
-    stream = SensorDataStream(dt, ranges=[(-2, 2), (-2, 2)])
-    #stream = SensorDataStream(dt, ranges=[(-3, 3)])
+    #stream = SensorDataStream(dt, ranges=[(-2, 2), (-2, 2)])
+    stream = SensorDataStream(dt, ranges=[])
     dataloader = DataLoader(stream)
 
     # RNN

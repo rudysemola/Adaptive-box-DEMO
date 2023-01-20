@@ -41,7 +41,7 @@ class SensorDataStream(IterableDataset):
         # map from ~22 -> ~80 to 1.5 -> 2 
         # T = map_to_range(T, (22, 80), (1.5, 2))
 
-        T = utils.map_to_range(self.temperature, (15, 80), (1.5, 2))
+        T = utils.map_to_range(self.temperature, 15, 80, 1.5, 2)
 
         v = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
 
