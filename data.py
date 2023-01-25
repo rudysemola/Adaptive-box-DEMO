@@ -28,8 +28,10 @@ class SensorDataStream(IterableDataset):
         # map from ~22 -> ~80 to 1.5 -> 2
         # T = map_to_range(T, (22, 80), (1.5, 2))
         
-        r = 1 if random.random() < 0.01 else 0
-        
+        # Testing anomalies
+        #r = 1 if random.random() < 0.01 else 0
+        r = 0
+
         T = 1.5
         v1 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s) + 4*r
         T = 2
@@ -44,9 +46,9 @@ class SensorDataStream(IterableDataset):
         else:
             x = torch.tensor([v2]) '''
         
-        if self.count < 1800:
+        if self.count < 900:
             x = torch.tensor([v2, v1])
-        elif self.count < 3600:
+        elif self.count < 1800:
             x = torch.tensor([v1, v2])
         else:
             x = torch.tensor([v2, v1])

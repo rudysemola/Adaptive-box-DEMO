@@ -10,6 +10,7 @@ from influxdb_client import InfluxDBClient, Point, WritePrecision
 
 import adats
 import model
+import replay
 import detector
 from data import SensorDataStream
 from utils import count_parameters
@@ -29,7 +30,7 @@ if __name__ == "__main__":
 
     w_size_prediction = 50 # Prediction window size
 
-    replay_mem_size = 200
+    replay_mem_size = 300
     n_features = 2
 
     plot_every = 280
@@ -77,7 +78,8 @@ if __name__ == "__main__":
         threshold=anomaly_threshold
     )
 
-    replay_mem = adats.ReplayMemory(capacity=replay_mem_size)
+    replay_mem = replay.DriftReplayMemory(capacity=replay_mem_size)
+    #replay_mem = replay.BasicReplayMemory(capacity=replay_mem_size)
 
     # Setting up the adaptive time series algorithm
     adats = adats.AdaTS(

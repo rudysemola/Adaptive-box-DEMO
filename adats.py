@@ -1,23 +1,10 @@
-import torch
-from matplotlib import pyplot as plt
+import time
+import itertools
 import random
 from collections import namedtuple, deque
-import time
 
-
-class ReplayMemory(object):
-
-    def __init__(self, capacity):
-        self.memory = deque([],maxlen=capacity)
-
-    def update(self, *args):
-        self.memory.append(Sample(*args))
-
-    def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
-
-    def __len__(self):
-        return len(self.memory)
+import torch
+from matplotlib import pyplot as plt
 
 
 Sample = namedtuple('Sample', ('input', 'target'))
@@ -112,8 +99,7 @@ class AdaTS:
                     self.model.train()
                     self.optimizer.zero_grad()
 
-                    samples = self.replay_mem.sample(self.batch_size)
-                    batch = Sample(*zip(*samples))
+                    batch = self.replay_mem.batch(self.batch_size)
                     input_batch = torch.stack(batch.input, dim=0) # B x w_size
                     target_batch = torch.stack(batch.target, dim=0)
 
@@ -164,6 +150,7 @@ class AdaTS:
                         writer.write_detection(int(drift))
 
                     if drift:
+                        self.replay_mem.drift()
                         # TODO: Handle anomaly, too many torch cats
                         print("\nDrift! Threshold = {}, "
                               "Mse: {:.3f}".format(self.drift_detector.threshold,
