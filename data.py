@@ -1,5 +1,6 @@
 import time
 import math
+import random
 
 import torch
 from torch.utils.data import IterableDataset
@@ -9,8 +10,7 @@ import utils
 
 class SensorDataStream(IterableDataset):
 
-    def __init__(self, dt, ranges=[]):
-        self.dt = dt
+    def __init__(self, ranges=[]):
         self.ranges = torch.tensor(ranges)
 
     def __iter__(self):
@@ -18,7 +18,6 @@ class SensorDataStream(IterableDataset):
         return self
 
     def __next__(self):
-        time.sleep(self.dt)
         self.count += 1
 
         b = 0.2
@@ -29,8 +28,10 @@ class SensorDataStream(IterableDataset):
         # map from ~22 -> ~80 to 1.5 -> 2
         # T = map_to_range(T, (22, 80), (1.5, 2))
         
+        r = 1 if random.random() < 0.01 else 0
+        
         T = 1.5
-        v1 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
+        v1 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s) + 4*r
         T = 2
         v2 = T*math.sin(T*self.count/s) + b*math.sin(c*self.count/s)
         
@@ -43,10 +44,12 @@ class SensorDataStream(IterableDataset):
         else:
             x = torch.tensor([v2]) '''
         
-        if self.count < 1000:
+        if self.count < 1800:
             x = torch.tensor([v2, v1])
-        else:
+        elif self.count < 3600:
             x = torch.tensor([v1, v2])
+        else:
+            x = torch.tensor([v2, v1])
 
         #x = torch.tensor([v1])
 

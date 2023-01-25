@@ -26,9 +26,10 @@ Sample = namedtuple('Sample', ('input', 'target'))
 class AdaTS:
     
     def __init__(self, model, optimizer, lr_scheduler, criterion,
-                 dataset, dataloader, detector, p, w_size_prediction, 
-                 replay_mem, train_each=10, batch_size=64, print_every=None, 
-                 plot_every=None, plot_last=None, stop_after=None):
+                 dataset, dataloader, drift_detector, anomaly_detector,
+                 dt, p, w_size_prediction, replay_mem, train_each=10,
+                 batch_size=64, print_every=None, plot_every=None,
+                 plot_last=None, stop_after=None):
         
         self.model = model
         self.optimizer = optimizer
@@ -36,7 +37,9 @@ class AdaTS:
         self.criterion = criterion
         self.dataset = dataset
         self.dataloader = dataloader
-        self.detector = detector
+        self.drift_detector = drift_detector
+        self.anomaly_detector = anomaly_detector
+        self.dt = dt
         self.p = p
         self.w_size_prediction = w_size_prediction
         self.replay_mem = replay_mem
@@ -48,7 +51,7 @@ class AdaTS:
         self.stop_after = stop_after
 
     
-    def start_adaptation(self, db_callback1=None, db_callback2=None):
+    def start_adaptation(self, writer=None):
 
         loader = iter(self.dataloader)
 
@@ -63,7 +66,8 @@ class AdaTS:
         lrs = []
 
         started_training = False
-        start = time.time()
+        processing_t = 0
+        start_flush_t = time.time()
 
         print("Waiting for prediction window to fill...")
 
@@ -71,12 +75,22 @@ class AdaTS:
         while True:
 
             # Wait for the next (1, n) tensor x
+            start_t = time.time()
             x = next(loader)
+            data_t = time.time() - start_t
+
+            if (processing_t + data_t) < self.dt:
+                time.sleep(self.dt - (processing_t + data_t))
+            """ else:
+                print("Not sleeping, the time value dt is too low") """
+
+            start_t = time.time()
             series.append(x)
             n_series += 1
 
             # Wait for the prediction window to be filled
             if n_series < self.w_size_prediction:
+                processing_t = time.time() - start_t
                 continue
 
             # Predictions with corresponding true values
@@ -88,10 +102,6 @@ class AdaTS:
                 input_seq = torch.cat(series[-self.p-self.w_size_prediction:-self.p])
                 target = series[-1].view(-1)
                 self.replay_mem.update(input_seq, target)
-
-                # Write to db
-                if db_callback1 is not None:
-                    db_callback1(x[0, 0].item(), preds[-self.p][0, 0].item())
 
                 if (labeled > self.batch_size) and (labeled % self.train_each == 0):
 
@@ -127,6 +137,11 @@ class AdaTS:
 
             # Append new prediction
             preds.append(pred)
+
+            # Write to db
+            if writer is not None:
+                writer.write_real(x)
+                writer.write_prediction(pred)
             
             if (self.print_every is not None and 
                 n_series % self.print_every == 0 and len(preds) > self.p):
@@ -141,28 +156,47 @@ class AdaTS:
             # Detection should start after the observation of the true value 
             # corresponding to the first prediction
             if labeled > 0:
-                # Wait for detection window to be filled
-                if labeled % self.detector.w_size == 0:
-                    det, mse = self.detector.detect_change(torch.cat(series), 
-                                                           torch.cat(preds), labeled)
+                # Wait for drift detection window to be filled
+                if labeled % self.drift_detector.w_size == 0:
+                    drift, mse = self.drift_detector.detect(torch.cat(series), 
+                                                            torch.cat(preds)[:-self.p])
+                    if writer is not None:
+                        writer.write_detection(int(drift))
 
-                    if db_callback2 is not None:
-                        # Push detection value to db
-                        db_callback2(int(det))
-
-                    if det:
+                    if drift:
                         # TODO: Handle anomaly, too many torch cats
-                        print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t,
-                                                                              mse.item()))
+                        print("\nDrift! Threshold = {}, "
+                              "Mse: {:.3f}".format(self.drift_detector.threshold,
+                                                   mse.item()))
+                
+                # Wait for anomaly detection window to be filled
+                if labeled % self.anomaly_detector.w_size == 0:
+                    anomaly, mse = self.anomaly_detector.detect(torch.cat(series), 
+                                                                torch.cat(preds)[:-self.p])
+                    if writer is not None:
+                        writer.write_detection(int(anomaly))
+                    
+                    if anomaly:
+                        # TODO: Handle anomaly, too many torch cats
+                        print("\nAnomaly! Threshold = {}, "
+                              "Mse: {:.3f}".format(self.anomaly_detector.threshold,
+                                                   mse.item()))
+
+            if (writer is not None 
+                    and time.time() - start_flush_t >= writer.flush_t):
+                print("Flushing!")
+                writer.flush()
+                start_flush_t = time.time()
 
             if self.stop_after is not None and n_series >= self.stop_after:
                 self.plot(torch.cat(series), torch.cat(preds))
-                print("Total elapsed time: {:.5f}".format(time.time()-start))
+                #print("Total elapsed time: {:.5f}".format(time.time()-start))
                 return losses, lrs
-
 
             if self.plot_every is not None and (n_series % self.plot_every) == 0:
                 self.plot(torch.cat(series), torch.cat(preds))
+            
+            processing_t = time.time() - start_t
 
             #print()
 
