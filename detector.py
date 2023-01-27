@@ -1,21 +1,20 @@
 import torch
 
 
-class Detector:
+class ThresholdDetector:
 
-    def __init__(self, w_size, p, t):
+    def __init__(self, w_size, threshold):
         self.w_size = w_size
-        self.p = p
-        self.t = t
+        self.threshold = threshold
         
-    def detect_change(self, series, preds, labeled):
+    def detect(self, series, predictions):
 
         # Compute mse inside window
-        true = series[-self.w_size:]
-        pred = preds[labeled-self.w_size:labeled]
+        series = series[-self.w_size:]
+        predictions = predictions[-self.w_size:]
 
-        mse = torch.mean(torch.square(true - pred))
+        mse = torch.mean(torch.square(series - predictions))
 
-        return mse > self.t, mse
+        return mse > self.threshold, mse
 
 

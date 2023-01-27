@@ -1,141 +1,212 @@
-#from matplotlib import pyplot as plt
+import time
+
 import torch
+from matplotlib import pyplot as plt
 
 
 class AdaTS:
     
-    def __init__(self, model, optimizer, criterion,
-                 dataset, dataloader, detector, p,
-                 w_size_prediction, plot_every, print_every,
-                 plot_last=-1):
+    def __init__(self, model, optimizer, lr_scheduler, criterion,
+                 dataset, dataloader, drift_detector, anomaly_detector,
+                 dt, p, w_size_prediction, replay_mem, train_each=10,
+                 batch_size=64, print_every=None, plot_every=None,
+                 plot_last=None, stop_after=None):
         
         self.model = model
         self.optimizer = optimizer
+        self.lr_scheduler=lr_scheduler
         self.criterion = criterion
         self.dataset = dataset
         self.dataloader = dataloader
-        self.detector = detector
+        self.drift_detector = drift_detector
+        self.anomaly_detector = anomaly_detector
+        self.dt = dt
         self.p = p
         self.w_size_prediction = w_size_prediction
-        self.plot_every = plot_every
+        self.replay_mem = replay_mem
+        self.train_each = train_each
+        self.batch_size = batch_size
         self.print_every = print_every
+        self.plot_every = plot_every
         self.plot_last = plot_last
+        self.stop_after = stop_after
 
     
-    def start_adaptation(self, db_callback1=None, db_callback2=None, plot=False):
+    def start_adaptation(self, writer=None):
 
         loader = iter(self.dataloader)
 
+        # TODO: Fix out of memory
         series = []
         preds = []
-        model_list = []
+        #model_list = []
+        
+        n_series = 0
+
+        losses = []
+        lrs = []
+
+        started_training = False
+        processing_t = 0
+        start_flush_t = time.time()
+
+        print("Waiting for prediction window to fill...")
 
         # Begin inference and adaptation
         while True:
 
             # Wait for the next (1, n) tensor x
+            start_t = time.time()
             x = next(loader)
+            data_t = time.time() - start_t
 
-            # Cat new data
+            if (processing_t + data_t) < self.dt:
+                time.sleep(self.dt - (processing_t + data_t))
+            """ else:
+                print("Not sleeping, the time value dt is too low") """
+
+            start_t = time.time()
             series.append(x)
+            n_series += 1
 
-            # Num. of predictions with corresponding true values
-            labeled = self.dataset.count - self.p
+            # Wait for the prediction window to be filled
+            if n_series < self.w_size_prediction:
+                processing_t = time.time() - start_t
+                continue
+
+            # Predictions with corresponding true values
+            labeled = n_series - self.w_size_prediction - self.p + 1
+            
             if labeled > 0:
 
-                # Write to db
-                if db_callback1 is not None:
-                    db_callback1(x.item(), preds[-self.p].item())
+                # Update replay memory
+                input_seq = torch.cat(series[-self.p-self.w_size_prediction:-self.p])
+                target = series[-1].view(-1)
+                self.replay_mem.update(input_seq, target)
 
-                # Training step
-                self.model.train()
+                if (labeled > self.batch_size) and (labeled % self.train_each == 0):
 
-                # Compute gradients wrt old model used for the prediction
-                # of current timestep
-                p_model, p_optimizer = model_list.pop(0)
-                p_optimizer.zero_grad()
-                # Compute loss(x, x_hat) and back prop (x_hat is a past prediction)
-                loss = self.criterion(x, preds[-self.p].view(1, -1))
-                loss.backward()
+                    if not started_training:
+                        print("Training has started.")
+                        started_training = True
+                    
+                    self.model.train()
+                    self.optimizer.zero_grad()
 
-                # Copy gradients to last model
-                for p1, p2 in zip(p_model.named_parameters(), self.model.named_parameters()):
-                    p2[1].grad = p1[1].grad
+                    batch = self.replay_mem.batch(self.batch_size)
+                    input_batch = torch.stack(batch.input, dim=0) # B x w_size
+                    target_batch = torch.stack(batch.target, dim=0)
 
-                # Backprop on last model
-                self.optimizer.step()
+                    # Forward
+                    out = self.model(input_batch)
+                    
+                    # Compute loss and backprop
+                    loss = self.criterion(out, target_batch)
+                    loss.backward()
+                    self.optimizer.step()
+                    self.lr_scheduler.step()
+
+                    losses.append(loss.item())
+                    lrs.append(self.optimizer.param_groups[0]["lr"])
             
-            # Predict x_(i+p) using x_i, ..., x_(i-w_size+1)
+            # Predict x_(i+p) using x_(i-w_size_prediction+1), ..., x_i
             self.model.eval()
-            x_hat = self.model(torch.unsqueeze(torch.cat(series[-self.w_size_prediction:]), dim=0))
+            input_seq = torch.cat(series[-self.w_size_prediction:])
+            input_seq = torch.unsqueeze(input_seq, dim=0)
+            pred = self.model(input_seq).view(1, -1)
+
+            # Append new prediction
+            preds.append(pred)
+
+            # Write to db
+            if writer is not None:
+                writer.write_real(x)
+                writer.write_prediction(pred)
             
-            if self.dataset.count % self.print_every == 0:
+            if (self.print_every is not None and 
+                n_series % self.print_every == 0 and len(preds) > self.p):
                 print("\n------------------------")
-                print("Data {}: {}".format(self.dataset.count, x))
-                print("Prediction: ", x_hat.data)
+                print("Incoming data point n. {}: \t{}".format(n_series, x))
+                print("Corresponding prediction: \t{}".format(preds[-self.p-1].data))
+                if started_training:
+                    print("Last lr: \t{:.5f}".format(self.optimizer.param_groups[0]["lr"]))
+                    print("Last loss: \t{:.5f}".format(loss.item()))
                 print("------------------------")
-
-
-            # Cat new prediction and model
-            preds.append(x_hat.view(1, -1))
-            model_list.append((self.model, self.optimizer))
-
-            # Create new model copying last one
-            last_model, last_opt = model_list[-1][0], model_list[-1][1]
-
-            self.model = last_model.clone()
-            self.model.load_state_dict(last_model.state_dict())
-
-            self.optimizer = type(last_opt)(self.model.parameters(), 
-                                            lr=last_opt.defaults['lr'])
-            self.optimizer.load_state_dict(last_opt.state_dict())
 
             # Detection should start after the observation of the true value 
             # corresponding to the first prediction
             if labeled > 0:
-                # Wait for detection window to be filled
-                if labeled % self.detector.w_size == 0:
-                    det, mse = self.detector.detect_change(torch.cat(series), 
-                                                           torch.cat(preds), labeled)
+                # Wait for drift detection window to be filled
+                if labeled % self.drift_detector.w_size == 0:
+                    drift, mse = self.drift_detector.detect(torch.cat(series), 
+                                                            torch.cat(preds)[:-self.p])
+                    if writer is not None:
+                        writer.write_drift(int(drift))
 
-                    if db_callback2 is not None:
-                        # Push detection value to db
-                        db_callback2(int(det))
-
-                    if det:
+                    if drift:
+                        self.replay_mem.drift()
                         # TODO: Handle anomaly, too many torch cats
-                        print("\nAnomaly! Threshold = {}, Mse: {:.3f}".format(self.detector.t, mse.item()))
+                        print("\nDrift! Threshold = {}, "
+                              "Mse: {:.3f}".format(self.drift_detector.threshold,
+                                                   mse.item()))
+                
+                # Wait for anomaly detection window to be filled
+                if labeled % self.anomaly_detector.w_size == 0:
+                    anomaly, mse = self.anomaly_detector.detect(torch.cat(series), 
+                                                                torch.cat(preds)[:-self.p])
+                    if writer is not None:
+                        writer.write_anomaly(int(anomaly))
+                    
+                    if anomaly:
+                        # TODO: Handle anomaly, too many torch cats
+                        print("\nAnomaly! Threshold = {}, "
+                              "Mse: {:.3f}".format(self.anomaly_detector.threshold,
+                                                   mse.item()))
 
-            if plot and (self.dataset.count % self.plot_every) == 0:
+            if (writer is not None 
+                    and time.time() - start_flush_t >= writer.flush_t):
+                print("Flushing!")
+                writer.flush()
+                start_flush_t = time.time()
+
+            if self.stop_after is not None and n_series >= self.stop_after:
                 self.plot(torch.cat(series), torch.cat(preds))
+                #print("Total elapsed time: {:.5f}".format(time.time()-start))
+                return losses, lrs
+
+            if self.plot_every is not None and (n_series % self.plot_every) == 0:
+                self.plot(torch.cat(series), torch.cat(preds))
+            
+            processing_t = time.time() - start_t
 
             #print()
 
-    
-    def plot(self, series, preds):
-        
-        if self.plot_last != -1:
-            series = series[-self.plot_last:]
-            preds = preds[-self.plot_last:]
 
-        offset = self.p
+    def plot(self, series, preds):
+
         n_features = series.size(dim=1)
+        offset = self.p + self.w_size_prediction
 
         if n_features == 1:
-            _, axs = plt.subplots(n_features, 1, figsize=(17, 4))
+            fig, axs = plt.subplots(n_features, 1, figsize=(17, 4))
 
-            axs.plot(range(0, len(series)), series[:, 0], label='Data')
-            axs.plot(range(offset, offset+len(preds)), 
-                        preds.detach().numpy()[:, 0], label='Predictions')
-            axs.legend() 
+            axs.plot(range(1, len(series)+1), series[:, 0], label='Data')
+            axs.plot(range(offset, offset + len(preds)),
+                     preds.detach().numpy()[:, 0], label='Predictions')
+            axs.legend()
+            if self.plot_last is not None:
+                axs.set_xlim([len(series)-self.plot_last, len(series)+self.p])
         else:
-            _, axs = plt.subplots(n_features, 1, figsize=(17, 5))
+            fig, axs = plt.subplots(n_features, 1, figsize=(17, 5))
 
             for i in range(n_features):
-                axs[i].plot(range(0, len(series)), series[:, i], label='Data')
-                axs[i].plot(range(offset, offset+len(preds)), 
+                axs[i].plot(range(1, len(series)+1), series[:, i], label='Data')
+                axs[i].plot(range(offset, offset + len(preds)),
                             preds.detach().numpy()[:, i], label='Predictions')
                 axs[i].legend()
+                if self.plot_last is not None:
+                    axs[i].set_xlim([len(series)-self.plot_last, len(series)+self.p])
+                axs[i].set_title("Feature " + str(i+1))
 
-        #plt.savefig('./plot.png', transparent=True)
+        fig.tight_layout()
         plt.show()
