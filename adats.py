@@ -1,13 +1,7 @@
 import time
-import itertools
-import random
-from collections import namedtuple, deque
 
 import torch
 from matplotlib import pyplot as plt
-
-
-Sample = namedtuple('Sample', ('input', 'target'))
 
 
 class AdaTS:
@@ -147,7 +141,7 @@ class AdaTS:
                     drift, mse = self.drift_detector.detect(torch.cat(series), 
                                                             torch.cat(preds)[:-self.p])
                     if writer is not None:
-                        writer.write_detection(int(drift))
+                        writer.write_drift(int(drift))
 
                     if drift:
                         self.replay_mem.drift()
@@ -161,7 +155,7 @@ class AdaTS:
                     anomaly, mse = self.anomaly_detector.detect(torch.cat(series), 
                                                                 torch.cat(preds)[:-self.p])
                     if writer is not None:
-                        writer.write_detection(int(anomaly))
+                        writer.write_anomaly(int(anomaly))
                     
                     if anomaly:
                         # TODO: Handle anomaly, too many torch cats

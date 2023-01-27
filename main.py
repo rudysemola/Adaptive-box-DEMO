@@ -19,7 +19,7 @@ from writer import InfluxDBWriter
 
 if __name__ == "__main__":
 
-    dt = 0 # Time interval between points in the time series
+    dt = 0.05 # Time interval between points in the time series
     p = 20 # Timesteps into the future (p=1 -> next step)
 
     w_size_drift = 20 # Detection window size
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     w_size_prediction = 50 # Prediction window size
 
-    replay_mem_size = 300
+    replay_mem_size = 200
     n_features = 2
 
     plot_every = 280
@@ -38,9 +38,9 @@ if __name__ == "__main__":
     plot_last = 600
     stop_after = None
 
-    test_db = False
+    test_db = True
     plot_every = (None if test_db else plot_every)
-    flush_time = 5 # Time between flushes to db/disk
+    flush_time = 3 # Time between flushes to db/disk
 
     # Create dataset and dataloader
     #stream = SensorDataStream(ranges=[(-2, 2)])
@@ -80,6 +80,7 @@ if __name__ == "__main__":
 
     replay_mem = replay.DriftReplayMemory(capacity=replay_mem_size)
     #replay_mem = replay.BasicReplayMemory(capacity=replay_mem_size)
+    #replay_mem = replay.LongShortReplayMemory(capacity=replay_mem_size)
 
     # Setting up the adaptive time series algorithm
     adats = adats.AdaTS(

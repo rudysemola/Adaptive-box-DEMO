@@ -29,7 +29,7 @@ class SensorDataStream(IterableDataset):
         # T = map_to_range(T, (22, 80), (1.5, 2))
         
         # Testing anomalies
-        #r = 1 if random.random() < 0.01 else 0
+        #r = 1 if random.random() < 0.0005 else 0
         r = 0
 
         T = 1.5
@@ -50,8 +50,10 @@ class SensorDataStream(IterableDataset):
             x = torch.tensor([v2, v1])
         elif self.count < 1800:
             x = torch.tensor([v1, v2])
-        else:
+        elif self.count < 2700:
             x = torch.tensor([v2, v1])
+        else:
+            x = torch.tensor([v1, v2])
 
         #x = torch.tensor([v1])
 

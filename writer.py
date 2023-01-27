@@ -44,9 +44,15 @@ class InfluxDBWriter(Writer):
                         str(prediction[0, i].item()) + " " + str(t)
             self.batch.append(point)
     
-    def write_detection(self, det):
+    def write_drift(self, det):
         t = time.time_ns() - self.pred_timedelta * 1e9
-        point = "monitoring,type=threshold det=" + \
+        point = "monitoring,type=threshold drift=" + \
+                    str(det) + " " + str(int(t))
+        self.batch.append(point)
+    
+    def write_anomaly(self, det):
+        t = time.time_ns() - self.pred_timedelta * 1e9
+        point = "monitoring,type=threshold anomaly=" + \
                     str(det) + " " + str(int(t))
         self.batch.append(point)
 
