@@ -34,7 +34,7 @@ if __name__ == "__main__":
     w_size_prediction = 50 # Prediction window size
 
     replay_mem_size = 200
-    n_features = 2
+    n_features = 1
 
     plot_every = 280
     print_every = 20
