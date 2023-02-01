@@ -93,7 +93,8 @@ class MockDataStream(IterableDataset):
         #x = torch.tensor([v1])
 
         if len(self.ranges) != 0:
-            x = self.preprocess_data(x)
+            #x = self.preprocess_data(x)
+            pass
 
         return x
 

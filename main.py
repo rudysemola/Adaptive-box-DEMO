@@ -22,7 +22,7 @@ from writer import InfluxDBWriter
 
 if __name__ == "__main__":
 
-    dt = 0.05 # Time interval between points in the time series
+    dt = 0.7 # Time interval between points in the time series
     p = 20 # Timesteps into the future (p=1 -> next step)
 
     w_size_drift = 20 # Detection window size
@@ -34,9 +34,9 @@ if __name__ == "__main__":
     w_size_prediction = 50 # Prediction window size
 
     replay_mem_size = 200
-    n_features = 1
+    n_features = 2
 
-    plot_every = 280
+    plot_every = None
     print_every = 20
     plot_last = 600
     stop_after = None
@@ -47,7 +47,8 @@ if __name__ == "__main__":
 
     # Create dataset and dataloader
     #stream = SensorDataStream(ranges=[(-2, 2)])
-    stream = SensorDataStream(ranges=[(-2, 2), (-2, 2)])
+    #stream = SensorDataStream(ranges=[(-2, 2), (-2, 2)])
+    stream = MockDataStream(ranges=[(-2, 2), (-2, 2)])
     dataloader = DataLoader(stream)
 
     # RNN
@@ -106,19 +107,24 @@ if __name__ == "__main__":
     )
 
     # You can generate an API token from the "API Tokens Tab" in the UI
-    """ url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
+    """url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
     token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low=="
     org = "Demo"
     bucket = "demo" """
 
-    url = "http://localhost:8086"
+    url = "192.168.1.51:8086"
     token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
     org = "continualist"
     bucket = "demo"
 
+    """ url = "http://localhost:8086"
+    token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
+    org = "continualist"
+    bucket = "demo" """
+
 
     if test_db:
-        with InfluxDBClient(url=url, token=token, org=org) as client:
+        with InfluxDBClient(url=url, token=token, org=org, timeout=30000) as client:
 
             write_api = client.write_api(write_options=SYNCHRONOUS)
             writer = InfluxDBWriter(bucket, org, write_api, p*dt, flush_time)

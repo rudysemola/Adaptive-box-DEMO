@@ -62,8 +62,8 @@ class AdaTS:
 
             if (processing_t + data_t) < self.dt:
                 time.sleep(self.dt - (processing_t + data_t))
-            """ else:
-                print("Not sleeping, the time value dt is too low") """
+            else:
+                print("Not sleeping, the time value dt is too low. Proc. + data time = ", processing_t + data_t)
 
             start_t = time.time()
             series.append(x)

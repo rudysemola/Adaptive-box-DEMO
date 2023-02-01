@@ -31,27 +31,27 @@ class InfluxDBWriter(Writer):
         self.batch = []
 
     def write_real(self, real):
-        t = time.time_ns() - self.pred_timedelta * 1e9
+        t = time.time() * 1e9  - self.pred_timedelta * 1e9
         for i in range(real.size(1)):
             point = "sensor,type=real_data sensor" + str(i) + "=" + \
                         str(real[0, i].item()) + " " + str(int(t))
             self.batch.append(point)
 
     def write_prediction(self, prediction):
-        t = time.time_ns()
+        t = time.time() * 1e9 
         for i in range(prediction.size(1)):
             point = "sensor,type=pred_data sensor" + str(i) + "=" + \
-                        str(prediction[0, i].item()) + " " + str(t)
+                        str(prediction[0, i].item()) + " " + str(int(t))
             self.batch.append(point)
     
     def write_drift(self, det):
-        t = time.time_ns() - self.pred_timedelta * 1e9
+        t = time.time() * 1e9 - self.pred_timedelta * 1e9
         point = "monitoring,type=threshold drift=" + \
                     str(det) + " " + str(int(t))
         self.batch.append(point)
     
     def write_anomaly(self, det):
-        t = time.time_ns() - self.pred_timedelta * 1e9
+        t = time.time() * 1e9 - self.pred_timedelta * 1e9
         point = "monitoring,type=threshold anomaly=" + \
                     str(det) + " " + str(int(t))
         self.batch.append(point)
