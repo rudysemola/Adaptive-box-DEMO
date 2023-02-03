@@ -56,22 +56,25 @@ class AdaTS:
         while True:
 
             # Wait for the next (1, n) tensor x
-            start_t = time.time()
+            data_t = time.time()
             x = next(loader)
-            data_t = time.time() - start_t
+            data_t = time.time() - data_t
+
+            print("data_t ", data_t)
 
             if (processing_t + data_t) < self.dt:
+                print("proc. + data time = ", processing_t + data_t)
                 time.sleep(self.dt - (processing_t + data_t))
             else:
                 print("Not sleeping, the time value dt is too low. Proc. + data time = ", processing_t + data_t)
 
-            start_t = time.time()
+            processing_t = time.time()
             series.append(x)
             n_series += 1
 
             # Wait for the prediction window to be filled
             if n_series < self.w_size_prediction:
-                processing_t = time.time() - start_t
+                processing_t = time.time() - processing_t
                 continue
 
             # Predictions with corresponding true values
@@ -79,10 +82,16 @@ class AdaTS:
             
             if labeled > 0:
 
+                replay_t = time.time()
+
                 # Update replay memory
                 input_seq = torch.cat(series[-self.p-self.w_size_prediction:-self.p])
                 target = series[-1].view(-1)
                 self.replay_mem.update(input_seq, target)
+
+                print("replay_t", time.time() - replay_t)
+
+                train_t = time.time()
 
                 if (labeled > self.batch_size) and (labeled % self.train_each == 0):
 
@@ -109,11 +118,15 @@ class AdaTS:
                     losses.append(loss.item())
                     lrs.append(self.optimizer.param_groups[0]["lr"])
             
+                print("train_t ", time.time() - train_t)
+            
+            eval_t = time.time()
             # Predict x_(i+p) using x_(i-w_size_prediction+1), ..., x_i
             self.model.eval()
             input_seq = torch.cat(series[-self.w_size_prediction:])
             input_seq = torch.unsqueeze(input_seq, dim=0)
             pred = self.model(input_seq).view(1, -1)
+            print("eval_t ", time.time() - eval_t)
 
             # Append new prediction
             preds.append(pred)
@@ -133,6 +146,7 @@ class AdaTS:
                     print("Last loss: \t{:.5f}".format(loss.item()))
                 print("------------------------")
 
+            anomaly_t = time.time()
             # Detection should start after the observation of the true value 
             # corresponding to the first prediction
             if labeled > 0:
@@ -163,11 +177,15 @@ class AdaTS:
                               "Mse: {:.3f}".format(self.anomaly_detector.threshold,
                                                    mse.item()))
 
+            print("anomaly_t ", time.time() - anomaly_t)
+                               
+            flush_t = time.time()
             if (writer is not None 
                     and time.time() - start_flush_t >= writer.flush_t):
                 print("Flushing!")
                 writer.flush()
                 start_flush_t = time.time()
+            print("flush_t ", time.time() - flush_t)
 
             if self.stop_after is not None and n_series >= self.stop_after:
                 self.plot(torch.cat(series), torch.cat(preds))
@@ -177,7 +195,7 @@ class AdaTS:
             if self.plot_every is not None and (n_series % self.plot_every) == 0:
                 self.plot(torch.cat(series), torch.cat(preds))
             
-            processing_t = time.time() - start_t
+            processing_t = time.time() - processing_t
 
             #print()
 

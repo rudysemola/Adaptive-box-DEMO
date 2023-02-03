@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+import sys
+import os
 
 import torch
 import torch.nn as nn
@@ -22,7 +24,14 @@ from writer import InfluxDBWriter
 
 if __name__ == "__main__":
 
-    dt = 0.7 # Time interval between points in the time series
+    
+    influxd_ip = sys.argv[1]
+    influxd_token = os.environ.get("INFLUX_TOKEN")
+
+    print("Server IP: ", influxd_ip)
+    print("Server token: ", influxd_token)
+   
+    dt = 0.2 # Time interval between points in the time series
     p = 20 # Timesteps into the future (p=1 -> next step)
 
     w_size_drift = 20 # Detection window size
@@ -112,8 +121,8 @@ if __name__ == "__main__":
     org = "Demo"
     bucket = "demo" """
 
-    url = "192.168.1.51:8086"
-    token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
+    url = influxd_ip + ":8086"
+    token = influxd_token 
     org = "continualist"
     bucket = "demo"
 
