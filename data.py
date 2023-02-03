@@ -93,12 +93,11 @@ class MockDataStream(IterableDataset):
         #x = torch.tensor([v1])
 
         if len(self.ranges) != 0:
-            #x = self.preprocess_data(x)
-            pass
+            x = self.preprocess_data(x)
 
         return x
 
     def preprocess_data(self, x):
-        x = torch.clamp(x, min=self.ranges[:, 0], max=self.ranges[:, 1])
+        #x = torch.clamp(x, min=self.ranges[:, 0], max=self.ranges[:, 1])
         x = utils.map_to_range(x, self.ranges[:, 0], self.ranges[:, 1], -1, 1)
         return x

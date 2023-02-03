@@ -42,8 +42,9 @@ if __name__ == "__main__":
 
     w_size_prediction = 50 # Prediction window size
 
-    batch_size = 32
-    accumulation_steps = 2
+    train_each = 5
+    batch_size = 16
+    accumulation_steps = 4
     replay_mem_size = 200
     n_features = 2
 
@@ -111,6 +112,7 @@ if __name__ == "__main__":
         p=p,
         w_size_prediction=w_size_prediction,
         replay_mem=replay_mem,
+        train_each=train_each,
         batch_size=batch_size,
         accumulation_steps=accumulation_steps,
         plot_every=plot_every,
