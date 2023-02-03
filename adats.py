@@ -9,7 +9,7 @@ class AdaTS:
     def __init__(self, model, optimizer, lr_scheduler, criterion,
                  dataset, dataloader, drift_detector, anomaly_detector,
                  dt, p, w_size_prediction, replay_mem, train_each=10,
-                 batch_size=64, print_every=None, plot_every=None,
+                 batch_size=64, accumulation_steps=2, print_every=None, plot_every=None,
                  plot_last=None, stop_after=None):
         
         self.model = model
@@ -26,6 +26,7 @@ class AdaTS:
         self.replay_mem = replay_mem
         self.train_each = train_each
         self.batch_size = batch_size
+        self.accumulation_steps = accumulation_steps
         self.print_every = print_every
         self.plot_every = plot_every
         self.plot_last = plot_last
@@ -42,6 +43,7 @@ class AdaTS:
         #model_list = []
         
         n_series = 0
+        n_batches = 0
 
         losses = []
         lrs = []
@@ -99,8 +101,9 @@ class AdaTS:
                         print("Training has started.")
                         started_training = True
                     
+                    n_batches += 1
+
                     self.model.train()
-                    self.optimizer.zero_grad()
 
                     batch = self.replay_mem.batch(self.batch_size)
                     input_batch = torch.stack(batch.input, dim=0) # B x w_size
@@ -112,8 +115,11 @@ class AdaTS:
                     # Compute loss and backprop
                     loss = self.criterion(out, target_batch)
                     loss.backward()
-                    self.optimizer.step()
-                    self.lr_scheduler.step()
+                    
+                    if n_batches % self.accumulation_steps == 0:
+                        self.optimizer.step()
+                        self.lr_scheduler.step()
+                        self.optimizer.zero_grad()
 
                     losses.append(loss.item())
                     lrs.append(self.optimizer.param_groups[0]["lr"])
