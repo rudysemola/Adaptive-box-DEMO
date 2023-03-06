@@ -1,4 +1,4 @@
-# AI-in-the-box DEMO 
+# Zero-box DEMO 
 This demo is powered by ContinualIST Team.
 
 ## General
@@ -8,7 +8,7 @@ The vision is creating a solution with the following features:
 - will be more pervasive than standard AI/machine learning (HW, infrastructures and platform - portability and flexibility)
 - have the properties to adapt production AI models in high variant and dynamic production environments without human intervention (data-driven and auto-adaptive).
 
-### AI-in-the-box DEMO: Use case
+### Zero-box DEMO: Use case
 The focus for this Demo is on AIoT and IIoT scenarios and requirements.
 
 The specific application is Predictive Maintenance for Industry 4.0 (tasks - time-series monitoring and forecasting). The features desiderated:
