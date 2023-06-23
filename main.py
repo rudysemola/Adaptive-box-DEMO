@@ -57,7 +57,7 @@ if __name__ == "__main__":
     plot_last = 600
     stop_after = None
 
-    test_db = False
+    test_db = True
     plot_every = (None if test_db else plot_every)
     flush_time = 3 # Time between flushes to db/disk
 
