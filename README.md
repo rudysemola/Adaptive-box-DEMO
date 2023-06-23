@@ -19,7 +19,7 @@ The specific application is Predictive Maintenance for Industry 4.0 (tasks - tim
 ## Setup the environment and dependencies
 
 To setup the environment, create a conda environment with Python 3.6 and install the following packages with pip:
-- torch 1.5.0
+- torch 1.5.0 (CPU) (https://pytorch.org/get-started/previous-versions/#linux-and-windows-35)
 - influxdb_client
 - matplotlib 
 
