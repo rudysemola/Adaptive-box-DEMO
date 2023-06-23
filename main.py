@@ -22,9 +22,10 @@ from utils import count_parameters
 from writer import InfluxDBWriter
 
 try:
+    import Adafruit_DHT
     from data import SensorDataStream
 except ImportError:
-    raspberry = True
+    raspberry = False
 
 
 if __name__ == "__main__":
@@ -52,12 +53,13 @@ if __name__ == "__main__":
     replay_mem_size = 200
     n_features = 2
 
+    # Set plot parameters here
     plot_every = None
     print_every = 20
     plot_last = 600
     stop_after = None
 
-    test_db = True
+    test_db = False # Specify if using InfluxDB as database
     plot_every = (None if test_db else plot_every)
     flush_time = 3 # Time between flushes to db/disk
 
@@ -125,24 +127,25 @@ if __name__ == "__main__":
         stop_after=stop_after
     )
 
-    # You can generate an API token from the "API Tokens Tab" in the UI
-    """url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
-    token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low=="
-    org = "Demo"
-    bucket = "demo" """
-
-    url = influxd_ip + ":8086"
-    token = influxd_token 
-    org = "continualist"
-    bucket = "demo"
-
-    """ url = "http://localhost:8086"
-    token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
-    org = "continualist"
-    bucket = "demo" """
-
-
+    
     if test_db:
+        # You can generate an API token from the "API Tokens Tab" in the UI
+        """url = "https://eu-central-1-1.aws.cloud2.influxdata.com"
+        token = "_MIxZCUUHklj9lTkTLmx08HWTflkmWCj2VZh9mF70_Qym6G8JNNf_f-yJeHC78HfntrWMQsMkVzNS2ifsR3low=="
+        org = "Demo"
+        bucket = "demo" """
+
+        url = influxd_ip + ":8086"
+        token = influxd_token 
+        org = "continualist"
+        bucket = "demo"
+
+        """ url = "http://localhost:8086"
+        token = "M4mYYxvGvvVYQvx8dMsmOyAVmE8fXguadP5T1cWX0cye5qo53jmCkP9ESSsMf-XwkkUWIpBk1OB1lrww7fO_jA=="
+        org = "continualist"
+        bucket = "demo" """
+
+
         with InfluxDBClient(url=url, token=token, org=org, timeout=30000) as client:
 
             write_api = client.write_api(write_options=SYNCHRONOUS)
