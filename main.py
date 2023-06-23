@@ -16,20 +16,24 @@ import replay
 import detector
 from torch.utils.data import DataLoader
 import torch.nn as nn
-from data import MockDataStream, SensorDataStream 
+from data import MockDataStream
 import torch
 from utils import count_parameters
 from writer import InfluxDBWriter
 
+try:
+    from data import SensorDataStream
+except ImportError:
+    raspberry = True
+
 
 if __name__ == "__main__":
 
-    
-    influxd_ip = sys.argv[1]
-    influxd_token = os.environ.get("INFLUX_TOKEN")
-
-    print("Server IP: ", influxd_ip)
-    print("Server token: ", influxd_token)
+    if raspberry:
+        influxd_ip = sys.argv[1]
+        influxd_token = os.environ.get("INFLUX_TOKEN")
+        print("Server IP: ", influxd_ip)
+        print("Server token: ", influxd_token)
    
     dt = 0.2 # Time interval between points in the time series
     p = 20 # Timesteps into the future (p=1 -> next step)
@@ -53,7 +57,7 @@ if __name__ == "__main__":
     plot_last = 600
     stop_after = None
 
-    test_db = True
+    test_db = False
     plot_every = (None if test_db else plot_every)
     flush_time = 3 # Time between flushes to db/disk
 
